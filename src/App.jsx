@@ -4,12 +4,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { bootstrapAuth } from './store/authSlice.js';
 import { homeFor } from './store/store.js';
 import ProtectedRoute from './routes/ProtectedRoute.jsx';
-import { Spinner } from './components/common/ui.jsx';
+import { BootScreen } from './components/common/ClinicLogo.jsx';
 import AdminLayout from './layouts/AdminLayout.jsx';
 import ManagerLayout from './layouts/ManagerLayout.jsx';
 import DoctorLayout from './layouts/DoctorLayout.jsx';
-
-const Login = lazy(() => import('./pages/auth/Login.jsx'));
+import Login from './pages/auth/Login.jsx';
 const DashboardScreen = lazy(() => import('./features/dashboard/DashboardScreen.jsx'));
 const NewPatient = lazy(() => import('./pages/manager/NewPatient.jsx'));
 const IntakeForm = lazy(() => import('./features/intake/IntakeForm.jsx'));
@@ -38,7 +37,7 @@ export default function App() {
   useEffect(() => { dispatch(bootstrapAuth()); }, [dispatch]);
 
   return (
-    <Suspense fallback={<div className="grid min-h-screen place-items-center"><Spinner /></div>}>
+    <Suspense fallback={<BootScreen />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Navigate to="/login" replace />} />

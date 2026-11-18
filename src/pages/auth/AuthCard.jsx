@@ -17,8 +17,7 @@ export default function AuthCard({ title, text, children }) {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const ctx = gsap.context(() => {
       if (reduce) return;
-      gsap.from(cardRef.current, { y: 28, autoAlpha: 0, duration: 0.85, ease: 'power3.out' });
-      gsap.from('.auth-mark', { y: 12, autoAlpha: 0, duration: 0.7, delay: 0.15, ease: 'power2.out' });
+      gsap.from(cardRef.current, { y: 12, duration: 0.45, ease: 'power2.out', clearProps: 'transform' });
       gsap.to('.auth-orb', {
         x: 'random(-36, 36)',
         y: 'random(-48, 48)',

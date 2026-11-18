@@ -80,9 +80,16 @@ export function UserAdmin({ role, title }) {
     } catch (error) { toast.error(errorMessage(error)); }
   }
 
+  const intro = role === 'DOCTOR'
+    ? 'Doctors sign in with email and password. Assign Skin, Surgery, or both.'
+    : role === 'CLINIC_MANAGER'
+      ? 'Clinic managers sign in with email and password. They are separate from doctors.'
+      : 'Only an administrator can create another administrator, a clinic manager, or a doctor.';
+  const addLabel = role === 'DOCTOR' ? 'Add doctor' : role === 'CLINIC_MANAGER' ? 'Add clinic manager' : 'New account';
+
   return (
     <div>
-      <PageHeader title={title} text={role === 'DOCTOR' ? 'Doctors sign in with email and password. Assign Skin, Surgery, or both.' : role === 'CLINIC_MANAGER' ? 'Clinic managers sign in with email and password. They are separate from doctors.' : 'Only an administrator can create another administrator, a clinic manager, or a doctor.'} actions={<Button onClick={() => setOpen(true)}><UserPlus size={18} /> {role === 'DOCTOR' ? 'Add doctor' : role === 'CLINIC_MANAGER' ? 'Add clinic manager' : 'New account'}</Button>} />
+      <PageHeader title={title} text={intro} actions={<Button onClick={() => setOpen(true)}><UserPlus size={18} /> {addLabel}</Button>} />
       <div className="card p-4">
         <DataTable
           rows={(data?.items || []).filter((row) => !role || row.role === role)}

@@ -149,10 +149,10 @@ export function Pagination({ meta, onPage }) {
 
 export function PageHeader({ title, text, actions }) {
   return (
-    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-5 flex flex-col gap-3 rounded-2xl bg-ink-900 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">{title}</h1>
-        {text && <p className="mt-2 text-lg font-bold text-slate-600">{text}</p>}
+        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{title}</h1>
+        {text && <p className="mt-2 text-lg font-bold text-white">{text}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
