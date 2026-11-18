@@ -205,7 +205,7 @@ export function DepartmentAdmin() {
             try { await api.patch(`/departments/${department._id}`, { name: selected === department._id ? name : department.name, description: department.description }); toast.success('Department updated'); reload(); }
             catch (error) { toast.error(errorMessage(error)); }
           }}>
-            <p className="text-xs font-semibold text-teal-700">{department.code} · {department.patientIdPrefix}</p>
+            <p className="text-xs font-bold text-teal-700">{department.code} · {department.patientIdPrefix}</p>
             <TextInput defaultValue={department.name} onChange={(event) => { setSelected(department._id); setName(event.target.value); }} />
             <Button type="submit" size="sm">Save</Button>
           </form>
@@ -309,7 +309,7 @@ export function PolicyAdmin() {
       <div className="space-y-3">
         {(data?.data || []).map((version) => (
           <article key={version._id} className="card p-4">
-            <h3 className="font-semibold">Version {version.version}</h3>
+            <h3 className="font-bold">Version {version.version}</h3>
             <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">{version.items.map((item) => <li key={item}>{item}</li>)}</ul>
           </article>
         ))}

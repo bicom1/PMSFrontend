@@ -34,14 +34,14 @@ export default function SearchableSelect({ label, value, onChange, options, plac
       </button>
       {open && (
         <div id={listId} className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-          <input className="w-full border-b border-slate-100 px-3 py-2 text-sm outline-none" placeholder="Type to filter" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input className="w-full border-b border-slate-100 px-3 py-2 text-base outline-none" placeholder="Type to filter" value={query} onChange={(event) => setQuery(event.target.value)} />
           <ul className="max-h-56 overflow-auto py-1">
-            {filtered.length === 0 && <li className="px-3 py-2 text-sm text-slate-400">No matches</li>}
+            {filtered.length === 0 && <li className="px-3 py-2 text-base text-slate-400">No matches</li>}
             {filtered.map((option) => (
               <li key={option.value}>
                 <button
                   type="button"
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50"
+                  className="w-full px-3 py-2 text-left text-base hover:bg-teal-50"
                   onClick={() => {
                     onChange(option.value);
                     setOpen(false);

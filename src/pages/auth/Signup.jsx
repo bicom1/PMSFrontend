@@ -54,7 +54,7 @@ export default function Signup() {
         <PasswordField id="signup-confirm-password" label="Confirm password" icon={Lock} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" />
         {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
         <Button type="submit" className="w-full" disabled={busy}><UserPlus size={18} />{busy ? 'Creating account…' : 'Create account'}</Button>
-        <p className="text-center text-base text-slate-500">Already have an account? <Link className="font-medium text-brand-700 underline-offset-2 transition hover:text-brand-600 hover:underline" to="/login">Sign in</Link></p>
+        <p className="text-center text-base text-slate-500">Already have an account? <Link className="font-bold text-brand-700 underline-offset-2 transition hover:text-brand-600 hover:underline" to="/login">Sign in</Link></p>
       </form>
     </AuthCard>
   );

@@ -46,9 +46,10 @@ export const api = {
   delete: (url, body) => http.delete(url, { data: body }).then((res) => res.data),
 };
 
-export async function openProtectedPdf(path, { downloadName } = {}) {
+export async function openProtectedFile(path, { downloadName, mimeType } = {}) {
   const response = await http.get(path, { responseType: 'blob' });
-  const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+  const type = mimeType || response.headers['content-type'] || 'application/octet-stream';
+  const url = URL.createObjectURL(new Blob([response.data], { type }));
   if (downloadName) {
     const link = document.createElement('a');
     link.href = url;
@@ -58,4 +59,8 @@ export async function openProtectedPdf(path, { downloadName } = {}) {
     window.open(url, '_blank', 'noopener');
   }
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export function openProtectedPdf(path, options) {
+  return openProtectedFile(path, options);
 }

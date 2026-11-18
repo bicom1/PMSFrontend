@@ -22,11 +22,11 @@ export default function PatientProfilePage({ submissionBase }) {
       <PageHeader title={`${patient.patientCode} · ${patient.fullName}`} text={data.linked ? `Linked ${data.linked.departmentCode} record ${data.linked.patientCode}` : 'No verified cross-department link'} />
       <section className="card grid gap-3 p-5 text-sm md:grid-cols-2">
         {[['Phone', patient.contactNumber], ['CNIC', patient.cnic], ['Date of birth', patient.dateOfBirth], ['Age', patient.age], ['Gender', patient.gender], ['City', patient.city], ['Address', patient.address]].map(([label, value]) => (
-          <div key={label}><p className="text-slate-400">{label}</p><p className="font-medium">{value || '—'}</p></div>
+          <div key={label}><p className="text-slate-400">{label}</p><p className="font-bold">{value || '—'}</p></div>
         ))}
       </section>
       <section className="card p-5">
-        <h2 className="font-semibold">Procedures</h2>
+        <h2 className="font-bold">Procedures</h2>
         <ul className="mt-3 space-y-2 text-sm">
           {submissions.map((item) => <li key={item.id}><Link className="text-brand-700" to={`${submissionBase}/${item.id}`}>{item.formDate} · {item.procedure} · {item.bookingStatus}</Link></li>)}
         </ul>

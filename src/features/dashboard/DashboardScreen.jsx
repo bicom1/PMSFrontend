@@ -3,12 +3,15 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { CalendarCheck, CalendarX, ClipboardList, Clock, Stethoscope, UserCheck, UserPlus, Users } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { errorMessage } from '../../utils/format.js';
-import { PageHeader, Spinner, StatCard, useToast } from '../../components/common/ui.jsx';
+import { useNavigate } from 'react-router-dom';
+import { Badge, RecordState, Spinner, StatCard, statusTone, useToast } from '../../components/common/ui.jsx';
+import ClinicLogo from '../../components/common/ClinicLogo.jsx';
 import DataTable from '../../components/tables/DataTable.jsx';
-import { Badge, statusTone } from '../../components/common/ui.jsx';
 
 export default function DashboardScreen({ role }) {
   const toast = useToast();
+  const navigate = useNavigate();
+  const recordBase = role === 'ADMIN' ? '/admin/submissions' : role === 'DOCTOR' ? '/doctor/patients' : '/manager/submissions';
   const [data, setData] = useState(null);
   useEffect(() => {
     const path = role === 'ADMIN' ? '/admin/dashboard' : role === 'DOCTOR' ? '/doctor/dashboard' : '/manager/dashboard';
@@ -33,16 +36,33 @@ export default function DashboardScreen({ role }) {
         { label: 'Doctors', value: data.doctors, icon: Stethoscope },
       ] : []),
     ];
+  const gridClass = stats.length === 5
+    ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-6'
+    : stats.length > 5
+      ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-12'
+      : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4';
+  function cardSpan(index) {
+    if (stats.length === 5) return index < 3 ? 'lg:col-span-2' : 'lg:col-span-3';
+    if (stats.length > 5) return index < 4 ? 'lg:col-span-3' : 'lg:col-span-4';
+    return '';
+  }
   return (
     <div className="space-y-5">
-      <PageHeader title="Dashboard" text="Live clinic activity from the patient record." />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((item) => <StatCard key={item.label} {...item} />)}
+      <div className="flex items-center gap-4 rounded-2xl bg-ink-900 px-5 py-4 text-white">
+        <ClinicLogo className="h-20 w-20 shrink-0" />
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-teal-100">Enfield Royal Clinics</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+          <p className="mt-1 text-base font-bold text-slate-300">Live clinic activity from the patient record.</p>
+        </div>
+      </div>
+      <div className={gridClass}>
+        {stats.map((item, index) => <StatCard key={item.label} {...item} className={cardSpan(index)} />)}
       </div>
       {data.analytics && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="card p-4">
-            <h2 className="mb-3 text-xl font-semibold">Submissions per day</h2>
+            <h2 className="mb-3 text-xl font-bold">Submissions per day</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data.analytics.submissionsPerDay}>
@@ -56,7 +76,7 @@ export default function DashboardScreen({ role }) {
             </div>
           </div>
           <div className="card p-4">
-            <h2 className="mb-3 text-xl font-semibold">Bookings per doctor</h2>
+            <h2 className="mb-3 text-xl font-bold">Bookings per doctor</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.analytics.bookingsPerDoctor}>
@@ -76,20 +96,22 @@ export default function DashboardScreen({ role }) {
         <div className="grid gap-4 md:grid-cols-2">
           {data.departmentStats.map((item) => (
             <div key={item.department} className="card p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-              <h3 className="text-xl font-semibold">{item.department === 'SKIN' ? 'Skin' : 'Surgery'}</h3>
-              <p className="mt-2 text-sm text-slate-500">{item.patients} patients · {item.booked} booked · {item.notBooked} not booked</p>
+              <h3 className="text-xl font-bold">{item.department === 'SKIN' ? 'Skin' : 'Surgery'}</h3>
+              <p className="mt-2 text-base font-bold text-slate-600">{item.patients} patients · {item.booked} booked · {item.notBooked} not booked</p>
             </div>
           ))}
         </div>
       )}
       <div className="card p-4">
-        <h2 className="mb-3 font-semibold">Recent activity</h2>
+        <h2 className="mb-3 font-bold">Recent activity</h2>
         <DataTable
           rows={data.recent || []}
           rowKey={(row) => row.id}
+          onRow={(row) => navigate(`${recordBase}/${row.id}`)}
           emptyTitle="No submissions yet"
           emptyText="New registrations will show up here."
           columns={[
+            { key: 'unread', header: 'Record', render: (row) => <RecordState unread={row.unread} /> },
             { key: 'patientCode', header: 'Patient ID' },
             { key: 'patientName', header: 'Name' },
             { key: 'procedure', header: 'Procedure' },

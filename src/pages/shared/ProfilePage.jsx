@@ -12,6 +12,7 @@ export default function ProfilePage() {
   const toast = useToast();
   const [currentPassword, setCurrent] = useState('');
   const [newPassword, setNext] = useState('');
+  const canChangePassword = user?.role === 'ADMIN';
 
   async function onSubmit(event) {
     event.preventDefault();
@@ -34,12 +35,19 @@ export default function ProfilePage() {
         <p className="flex items-center gap-2"><Shield size={16} className="text-slate-400" /><span className="text-slate-400">Role</span> · {roleLabel(user.role)}</p>
         <p className="flex items-center gap-2"><Building2 size={16} className="text-slate-400" /><span className="text-slate-400">Departments</span> · {user.departments?.map((item) => item.name).join(', ') || '—'}</p>
       </section>
-      <form className="card space-y-3 p-5" onSubmit={onSubmit}>
-        <h2 className="flex items-center gap-2 text-xl font-semibold"><KeyRound size={18} /> Change password</h2>
-        <Field label="Current password"><TextInput type="password" value={currentPassword} onChange={(event) => setCurrent(event.target.value)} required /></Field>
-        <Field label="New password"><TextInput type="password" value={newPassword} onChange={(event) => setNext(event.target.value)} required /></Field>
-        <Button type="submit">Update password</Button>
-      </form>
+      {canChangePassword ? (
+        <form className="card space-y-3 p-5" onSubmit={onSubmit}>
+          <h2 className="flex items-center gap-2 text-xl font-bold"><KeyRound size={18} /> Change password</h2>
+          <Field label="Current password"><TextInput type="password" value={currentPassword} onChange={(event) => setCurrent(event.target.value)} required /></Field>
+          <Field label="New password"><TextInput type="password" value={newPassword} onChange={(event) => setNext(event.target.value)} required /></Field>
+          <Button type="submit">Update password</Button>
+        </form>
+      ) : (
+        <section className="card space-y-2 p-5">
+          <h2 className="flex items-center gap-2 text-xl font-bold"><KeyRound size={18} /> Password</h2>
+          <p className="text-base font-bold text-slate-600">Only an administrator can change this password. Ask an administrator if you need a new one.</p>
+        </section>
+      )}
     </div>
   );
 }

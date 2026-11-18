@@ -250,7 +250,7 @@ export default function IntakeForm({ departmentCode }) {
     setSubmitting(true);
     try {
       const body = await api.post('/submissions', payload);
-      toast.success(body.data.returningPatient ? `Procedure added to ${body.data.patient.patientCode}` : `Registered ${body.data.patient.patientCode}`);
+      toast.success(`Your form submitted successfully. ${body.data.patient.patientCode}`);
       const submissionBase = location.pathname.startsWith('/admin') ? '/admin/submissions' : '/manager/submissions';
       navigate(`${submissionBase}/${body.data.submission.id}`);
     } catch (error) {
@@ -283,7 +283,7 @@ export default function IntakeForm({ departmentCode }) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <PageHeader title={departmentCode === 'SKIN' ? 'Skin department form' : 'Surgery department form'} text="Register a visit. A returning patient keeps the same department ID." />
       <section className="card space-y-4 p-5">
-        <h2 className="font-semibold text-ink-900">Identification</h2>
+        <h2 className="text-xl font-bold text-ink-900">Identification</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <Field label="Contact number" error={errors.contactNumber?.message}><TextInput {...register('contactNumber')} /></Field>
           <Field label="Patient name" error={errors.fullName?.message}><TextInput {...register('fullName')} /></Field>
@@ -316,7 +316,7 @@ export default function IntakeForm({ departmentCode }) {
       </section>
 
       <section className="card grid gap-4 p-5 md:grid-cols-2">
-        <h2 className="md:col-span-2 font-semibold text-ink-900">Personal details</h2>
+        <h2 className="text-xl font-bold text-ink-900 md:col-span-2">Personal details</h2>
         <Field label="Date of birth" error={errors.dateOfBirth?.message}><TextInput type="date" {...register('dateOfBirth')} /></Field>
         <Field label="Age"><TextInput value={age} readOnly /></Field>
         <SearchableSelect label="Gender" options={genders} value={watch('gender')} onChange={(value) => setValue('gender', value, { shouldValidate: true })} error={errors.gender?.message} placeholder="Select gender" />
@@ -330,7 +330,7 @@ export default function IntakeForm({ departmentCode }) {
       </section>
 
       <section className="card grid gap-4 p-5 md:grid-cols-2">
-        <h2 className="md:col-span-2 font-semibold text-ink-900">Visit</h2>
+        <h2 className="text-xl font-bold text-ink-900 md:col-span-2">Visit</h2>
         <SearchableSelect label="Doctor" options={doctors.map((doctor) => ({ value: String(doctor.id || doctor._id), label: doctor.fullName }))} value={watch('doctorId')} onChange={(value) => setValue('doctorId', value, { shouldValidate: true })} error={errors.doctorId?.message} placeholder="Select doctor" />
         <SearchableSelect label="Procedure" options={procedures.map((procedure) => ({ value: String(procedure._id || procedure.id), label: procedure.name }))} value={watch('procedureId')} onChange={(value) => setValue('procedureId', value, { shouldValidate: true })} error={errors.procedureId?.message} placeholder="Select procedure" />
         <SearchableSelect label="Referred by" options={optionsOf(catalog.referrals)} value={referredBy} onChange={(value) => setValue('referredBy', value, { shouldValidate: true })} error={errors.referredBy?.message} placeholder="Select referral" />
@@ -340,9 +340,9 @@ export default function IntakeForm({ departmentCode }) {
 
       {departmentCode === 'SKIN' ? (
         <section className="card space-y-4 p-5">
-          <h2 className="font-semibold text-ink-900">Skin details</h2>
-          <p className="text-sm text-slate-500">Extra skin fields appear here after an administrator adds them in Master Data.</p>
-          {(catalog.skinFields || []).length === 0 && <p className="text-sm text-slate-500">No skin fields have been configured yet.</p>}
+          <h2 className="text-xl font-bold text-ink-900">Skin details</h2>
+          <p className="text-base font-bold text-slate-600">Extra skin fields appear here after an administrator adds them in Master Data.</p>
+          {(catalog.skinFields || []).length === 0 && <p className="text-base font-bold text-slate-600">No skin fields have been configured yet.</p>}
           <div className="grid gap-4 md:grid-cols-2">
             {(catalog.skinFields || []).map((field) => (
               <Field key={field.value} label={`${field.label}${field.metadata?.pendingConfirmation === false ? '' : ' (pending confirmation)'}`}>
@@ -353,7 +353,7 @@ export default function IntakeForm({ departmentCode }) {
         </section>
       ) : (
         <section className="card grid gap-4 p-5 md:grid-cols-2">
-          <h2 className="md:col-span-2 font-semibold text-ink-900">Surgery details</h2>
+          <h2 className="text-xl font-bold text-ink-900 md:col-span-2">Surgery details</h2>
           <SearchableSelect label="Anesthesia type" options={optionsOf(catalog.surgery?.anesthesia)} value={watch('anesthesiaType')} onChange={(value) => setValue('anesthesiaType', value)} placeholder="Select anesthesia" />
           <SearchableSelect label="Diet" options={optionsOf(catalog.surgery?.diet)} value={watch('diet')} onChange={(value) => setValue('diet', value)} placeholder="Select diet" />
           <SearchableSelect label="Blood test status" options={optionsOf(catalog.surgery?.blood)} value={watch('bloodTestStatus')} onChange={(value) => setValue('bloodTestStatus', value)} placeholder="Select blood test status" />
@@ -366,7 +366,7 @@ export default function IntakeForm({ departmentCode }) {
       )}
 
       <section className="card space-y-3 p-5">
-        <h2 className="font-semibold text-ink-900">{policy?.title} · version {policy?.version}</h2>
+        <h2 className="text-xl font-bold text-ink-900">{policy?.title} · version {policy?.version}</h2>
         <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
           {policy?.items?.map((item) => <li key={item}>{item}</li>)}
         </ul>

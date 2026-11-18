@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { api } from '../../services/api.js';
 import { errorMessage, formatWhen } from '../../utils/format.js';
-import { Badge, Button, PageHeader, statusTone, TextInput, useToast } from '../../components/common/ui.jsx';
+import { Badge, Button, PageHeader, RecordState, statusTone, TextInput, useToast } from '../../components/common/ui.jsx';
 import DataTable from '../../components/tables/DataTable.jsx';
 import { Pagination } from '../../components/common/ui.jsx';
 
@@ -83,6 +83,7 @@ export default function SubmissionBrowser({ title, endpoint, basePath, doctorMod
           emptyTitle={doctorMode ? 'No patients assigned' : 'No submissions'}
           emptyText={doctorMode ? 'Patients registered to you in your departments show up here.' : 'Adjust the filters or register a patient.'}
           columns={[
+            { key: 'unread', header: 'Record', render: (row) => <RecordState unread={row.unread} /> },
             { key: 'patientCode', header: 'Patient ID' },
             { key: 'patientName', header: 'Name' },
             { key: 'phoneNumber', header: 'Phone' },

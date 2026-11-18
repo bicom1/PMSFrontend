@@ -1,10 +1,14 @@
-import { CalendarCheck, CalendarX, Download, Eye, FileText, Printer, Trash2, UserRoundPen } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { api, openProtectedPdf } from '../../services/api.js';
+import { CalendarCheck, CalendarX, Download, Eye, FileText, FolderOpen, Printer, Stethoscope, StickyNote, Trash2, Upload, UserRoundPen } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { api, openProtectedFile, openProtectedPdf } from '../../services/api.js';
 import { bytes, clinicToday, errorMessage, formatWhen } from '../../utils/format.js';
 import { Badge, Button, Field, Modal, PageHeader, Spinner, TextArea, TextInput, statusTone, useToast } from '../../components/common/ui.jsx';
 
 const tabs = ['Overview', 'Patient profile', 'Medical history', 'Documents', 'Prescriptions', 'Clinical remarks'];
+
+function prettyStatus(status) {
+  return String(status || '—').replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 export default function SubmissionRecord({ id }) {
   const toast = useToast();
@@ -21,6 +25,9 @@ export default function SubmissionRecord({ id }) {
   const [rxDate, setRxDate] = useState(clinicToday);
   const [editingRx, setEditingRx] = useState(null);
   const [editingRemark, setEditingRemark] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [historyId, setHistoryId] = useState(null);
+  const fileInput = useRef(null);
 
   async function load() {
     const body = await api.get(`/submissions/${id}`);
@@ -66,16 +73,22 @@ export default function SubmissionRecord({ id }) {
     } catch (error) { toast.error(errorMessage(error)); }
   }
 
-  async function upload(event) {
-    const files = [...event.target.files];
+  async function uploadSelected(fileList) {
+    const files = [...(fileList || [])];
+    if (!files.length) return;
+    setUploading(true);
     const form = new FormData();
     files.forEach((file) => form.append('files', file));
     try {
       await api.post(`/submissions/${id}/documents`, form);
-      toast.success('Document uploaded');
+      toast.success(files.length === 1 ? 'File uploaded' : `${files.length} files uploaded`);
       await load();
-    } catch (error) { toast.error(errorMessage(error)); }
-    event.target.value = '';
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
   }
 
   async function savePrescription(event) {
@@ -116,65 +129,102 @@ export default function SubmissionRecord({ id }) {
       />
       <div className="flex gap-2 overflow-x-auto">
         {visibleTabs.map((item) => (
-          <button key={item} type="button" onClick={() => setTab(item)} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm ${tab === item ? 'bg-ink-900 text-white' : 'bg-white text-slate-600'}`}>{item}</button>
+          <button key={item} type="button" onClick={() => setTab(item)} className={`whitespace-nowrap rounded-full px-4 py-2 text-base font-bold ${tab === item ? 'bg-ink-900 text-white' : 'bg-white text-slate-600'}`}>{item}</button>
         ))}
       </div>
 
       {tab === 'Overview' && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section className="card space-y-3 p-5">
-            <h2 className="font-semibold">Booking</h2>
-            <p className="text-sm text-slate-500">Booked at: {formatWhen(submission.bookedAt)}</p>
-            {capabilities.canBook && (
-              <div className="flex gap-2">
-                <Button onClick={() => saveBooking('BOOKED')}><CalendarCheck size={18} /> Mark booked</Button>
-                <Button variant="secondary" onClick={() => saveBooking('NOT_BOOKED')}><CalendarX size={18} /> Mark not booked</Button>
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              ['Visit', `${prettyStatus(submission.department)} · ${submission.procedure}`, submission.formDate],
+              ['Doctor', submission.doctorName, 'Assigned for this visit'],
+              ['Booking', prettyStatus(submission.bookingStatus), submission.bookedAt ? `Booked ${formatWhen(submission.bookedAt)}` : 'Not booked yet'],
+              ['Consultation', prettyStatus(submission.consultationStatus), submission.consultationCompletedAt ? formatWhen(submission.consultationCompletedAt) : 'Waiting for the doctor'],
+            ].map(([label, value, hint]) => (
+              <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
+                <p className="mt-2 text-lg font-bold text-ink-900">{value || '—'}</p>
+                <p className="mt-1 text-base font-bold text-slate-600">{hint}</p>
               </div>
-            )}
-            {capabilities.canReassign && (
-              <div className="grid gap-2">
-                <select className="field" value={doctorId} onChange={(event) => setDoctorId(event.target.value)}>
-                  {doctors.filter((doctor) => doctor.departments?.some((department) => department.code === submission.department) || doctor.id === submission.doctorId).map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.fullName}</option>)}
-                </select>
-                <TextInput placeholder="Reason for reassignment" value={reason} onChange={(event) => setReason(event.target.value)} />
-                <Button variant="secondary" onClick={reassign}><UserRoundPen size={18} /> Reassign doctor</Button>
+            ))}
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100 text-brand-700"><CalendarCheck size={20} /></span>
+                  <div>
+                    <h2 className="text-xl font-bold text-ink-900">Booking</h2>
+                    <p className="text-base font-bold text-slate-600">{submission.bookedAt ? `Booked ${formatWhen(submission.bookedAt)}` : 'This visit is not booked yet'}</p>
+                  </div>
+                </div>
+                <Badge tone={statusTone(submission.bookingStatus)}>{prettyStatus(submission.bookingStatus)}</Badge>
               </div>
-            )}
-            <h3 className="pt-2 font-medium">Booking history</h3>
-            <ul className="space-y-2 text-sm text-slate-600">
-              {submission.bookingHistory?.length ? submission.bookingHistory.map((item, index) => <li key={index}>{item.fromStatus || '—'} → {item.toStatus} · {item.byName} · {formatWhen(item.at)}</li>) : <li>No booking changes yet.</li>}
-            </ul>
-          </section>
-          <section className="card space-y-3 p-5">
-            <h2 className="font-semibold">Operational remarks</h2>
-            {capabilities.canEditOperational ? (
-              <>
-                <TextArea value={remark} onChange={(event) => setRemark(event.target.value)} />
-                <Button onClick={saveRemark}>Save remark</Button>
-              </>
-            ) : <p className="text-sm">{submission.operationalRemark || 'No operational remark.'}</p>}
-            <ul className="space-y-2 text-sm text-slate-500">
-              {submission.operationalRemarkHistory?.map((item, index) => <li key={index}>{formatWhen(item.at)} · {item.authorName}: {item.text}</li>)}
-            </ul>
-            {capabilities.canEditClinical && (
-              <Button onClick={async () => {
-                try {
-                  await api.patch(`/doctor/patients/${id}/consultation`, { status: submission.consultationStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED' });
-                  toast.success('Consultation updated');
-                  await load();
-                } catch (error) { toast.error(errorMessage(error)); }
-              }}>
-                {submission.consultationStatus === 'COMPLETED' ? 'Reopen consultation' : 'Mark consultation complete'}
-              </Button>
-            )}
-          </section>
+              <div className="space-y-4 p-5">
+                {capabilities.canBook && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => saveBooking('BOOKED')} disabled={submission.bookingStatus === 'BOOKED'}><CalendarCheck size={18} /> Mark booked</Button>
+                    <Button variant="secondary" onClick={() => saveBooking('NOT_BOOKED')} disabled={submission.bookingStatus === 'NOT_BOOKED'}><CalendarX size={18} /> Mark not booked</Button>
+                  </div>
+                )}
+                {capabilities.canReassign && (
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <p className="mb-3 flex items-center gap-2 text-sm font-bold text-ink-900"><Stethoscope size={16} /> Assigned doctor</p>
+                    <div className="grid gap-2">
+                      <select className="field" value={doctorId} onChange={(event) => setDoctorId(event.target.value)}>
+                        {doctors.filter((doctor) => doctor.departments?.some((department) => department.code === submission.department) || doctor.id === submission.doctorId).map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.fullName}</option>)}
+                      </select>
+                      <TextInput placeholder="Reason for reassignment" value={reason} onChange={(event) => setReason(event.target.value)} />
+                      <Button variant="secondary" onClick={reassign}><UserRoundPen size={18} /> Reassign doctor</Button>
+                    </div>
+                  </div>
+                )}
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Current status</p>
+                  <p className="mt-1 text-lg font-bold text-ink-900">{prettyStatus(submission.bookingStatus)}</p>
+                  <p className="text-base font-bold text-slate-600">{submission.bookedAt ? formatWhen(submission.bookedAt) : 'Updated in place when you change booking'}</p>
+                </div>
+              </div>
+            </section>
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100 text-brand-700"><StickyNote size={20} /></span>
+                <div>
+                  <h2 className="text-xl font-bold text-ink-900">Operational remarks</h2>
+                  <p className="text-base font-bold text-slate-600">Reception notes for this visit</p>
+                </div>
+              </div>
+              <div className="space-y-4 p-5">
+                {capabilities.canEditOperational ? (
+                  <div className="space-y-3">
+                    <TextArea value={remark} onChange={(event) => setRemark(event.target.value)} placeholder="Add a note for the desk" />
+                    <Button onClick={saveRemark} disabled={!remark.trim() || remark.trim() === (submission.operationalRemark || '')}>Save remark</Button>
+                  </div>
+                ) : (
+                  <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-ink-900">{submission.operationalRemark || 'No operational remark.'}</p>
+                )}
+                {capabilities.canEditClinical && (
+                  <Button onClick={async () => {
+                    try {
+                      await api.patch(`/doctor/patients/${id}/consultation`, { status: submission.consultationStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED' });
+                      toast.success('Consultation updated');
+                      await load();
+                    } catch (error) { toast.error(errorMessage(error)); }
+                  }}>
+                    {submission.consultationStatus === 'COMPLETED' ? 'Reopen consultation' : 'Mark consultation complete'}
+                  </Button>
+                )}
+              </div>
+            </section>
+          </div>
         </div>
       )}
 
       {tab === 'Patient profile' && (
         <section className="card grid gap-3 p-5 text-sm md:grid-cols-2">
           {[['Patient ID', patient.patientCode], ['Name', patient.fullName], ['Phone', patient.contactNumber], ['CNIC', patient.cnic], ['Date of birth', patient.dateOfBirth], ['Age', patient.age], ['Gender', patient.gender], ['Nationality', patient.nationality], ['Occupation', patient.occupationOther || patient.occupation], ['City', patient.city], ['Address', patient.address], ['Weight', `${submission.weightKg} kg`], ['Height', `${submission.heightCm} cm`], ['Referred by', submission.referredByOther || submission.referredByLabel]].map(([label, value]) => (
-            <div key={label}><p className="text-slate-400">{label}</p><p className="font-medium text-slate-800">{value || '—'}</p></div>
+            <div key={label}><p className="text-slate-400">{label}</p><p className="font-bold text-slate-800">{value || '—'}</p></div>
           ))}
           {record.surgeryDetails && <div className="md:col-span-2 grid gap-3 md:grid-cols-2 rounded-xl bg-slate-50 p-4">
             <p className="md:col-span-2 text-sm text-amber-800">Surgery fields are provisional pending clinic confirmation. Cost is not a payment.</p>
@@ -191,16 +241,53 @@ export default function SubmissionRecord({ id }) {
         <div className="space-y-4">
           {record.history.map((group) => (
             <section key={`${group.departmentCode}-${group.patientCode}`} className="card p-5">
-              <h2 className="font-semibold">{group.linked ? 'Linked ' : ''}{group.departmentCode} · {group.patientCode}</h2>
-              <div className="mt-3 space-y-3">
-                {group.submissions.map((item) => (
-                  <article key={item.id} className="rounded-xl border border-slate-100 p-3 text-sm">
-                    <p className="font-medium">{item.procedure} · {item.doctorName} · {item.formDate}</p>
-                    <p className="text-slate-500">{item.bookingStatus} {item.bookedAt ? `· booked ${formatWhen(item.bookedAt)}` : ''}</p>
-                    {item.prescriptions?.map((rx) => <p key={rx.id} className="mt-1 text-slate-600">Prescription v{rx.currentVersion}: {rx.versions?.[0]?.medicines?.map((med) => med.name).join(', ')} <span className="text-slate-400">(read only in history)</span></p>)}
-                    {item.remarks?.map((note) => <p key={note.id} className="text-slate-600">Remark: {note.versions?.[0]?.notes}</p>)}
-                  </article>
-                ))}
+              <h2 className="text-xl font-bold">{group.linked ? 'Linked ' : ''}{group.departmentCode} · {group.patientCode}</h2>
+              <p className="text-base font-bold text-slate-600">{group.patientName}</p>
+              <div className="mt-4 space-y-3">
+                {group.submissions.map((item) => {
+                  const open = historyId === item.id;
+                  const surgery = item.surgeryDetails;
+                  const skin = item.skinDetails;
+                  return (
+                    <article key={item.id} className="rounded-2xl border border-slate-200 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-bold text-ink-900">{item.procedure}</p>
+                          <p className="text-base font-bold text-slate-600">{item.formDate} · {item.doctorName}</p>
+                          <div className="mt-2 flex gap-2">
+                            <Badge tone={statusTone(item.bookingStatus)}>{item.bookingStatus?.replaceAll('_', ' ')}</Badge>
+                            <Badge tone={statusTone(item.consultationStatus)}>{item.consultationStatus}</Badge>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="secondary" onClick={() => setHistoryId(open ? null : item.id)}>{open ? 'Hide details' : 'View details'}</Button>
+                      </div>
+                      {open && (
+                        <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+                          {[['Weight', item.weightKg ? `${item.weightKg} kg` : ''], ['Height', item.heightCm ? `${item.heightCm} cm` : ''], ['Age at visit', item.ageAtSubmission], ['Referred by', item.referredByOther || item.referredByLabel], ['Booked', formatWhen(item.bookedAt)], ['Operational remark', item.operationalRemark]].map(([label, value]) => (
+                            <div key={label} className="rounded-xl bg-slate-50 px-3 py-2">
+                              <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
+                              <p className="mt-1 font-bold text-ink-900">{value || '—'}</p>
+                            </div>
+                          ))}
+                          {surgery && [['Anesthesia', surgery.anesthesiaTypeLabel], ['Diet', surgery.dietLabel], ['Blood test', surgery.bloodTestStatusLabel], ['Location', surgery.locationOfSurgeryLabel], ['MRI', surgery.mriLabel], ['Cost', surgery.surgeryCost], ['Follow-up sessions', surgery.followUpSessions], ['Any other', surgery.anyOther]].map(([label, value]) => (
+                            <div key={label} className="rounded-xl bg-teal-50 px-3 py-2">
+                              <p className="text-xs uppercase tracking-wide text-teal-700">{label}</p>
+                              <p className="mt-1 font-bold text-ink-900">{value || '—'}</p>
+                            </div>
+                          ))}
+                          {skin?.fields?.map((field) => (
+                            <div key={field.key} className="rounded-xl bg-teal-50 px-3 py-2">
+                              <p className="text-xs uppercase tracking-wide text-teal-700">{field.label}</p>
+                              <p className="mt-1 font-bold text-ink-900">{field.value || '—'}</p>
+                            </div>
+                          ))}
+                          {item.prescriptions?.map((rx) => <p key={rx.id} className="md:col-span-2 text-slate-600">Prescription v{rx.currentVersion}: {rx.versions?.[0]?.medicines?.map((med) => med.name).join(', ') || '—'}</p>)}
+                          {item.remarks?.map((note) => <p key={note.id} className="md:col-span-2 text-slate-600">Remark: {note.versions?.[0]?.notes}</p>)}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ))}
@@ -208,26 +295,56 @@ export default function SubmissionRecord({ id }) {
       )}
 
       {tab === 'Documents' && (
-        <section className="card space-y-4 p-5">
-          {capabilities.canUpload && <input type="file" accept="application/pdf,.pdf" multiple onChange={upload} />}
-          <ul className="space-y-2">
-            {record.documents.map((document) => (
-              <li key={document.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 px-3 py-2 text-sm">
-                <div>
-                  <p className="font-medium">{document.originalFilename} {document.isDeleted && <Badge tone="rose">Deleted</Badge>}</p>
-                  <p className="text-slate-500">{bytes(document.size)} · {document.uploadedByName} · {formatWhen(document.createdAt)}</p>
-                </div>
-                {!document.isDeleted && (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => openProtectedPdf(`/documents/${document.id}/view`).catch((error) => toast.error(errorMessage(error)))}><Eye size={16} /> View</Button>
-                    <Button size="sm" variant="secondary" onClick={() => openProtectedPdf(`/documents/${document.id}/download`, { downloadName: document.originalFilename }).catch((error) => toast.error(errorMessage(error)))}><Download size={16} /> Download</Button>
-                    {capabilities.canUpload && <Button size="sm" variant="danger" onClick={async () => { await api.delete(`/documents/${document.id}`, { reason: 'Removed by user' }); await load(); }}><Trash2 size={16} /> Delete</Button>}
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100 text-brand-700"><FolderOpen size={20} /></span>
+              <div>
+                <h2 className="text-xl font-bold text-ink-900">Documents</h2>
+                <p className="text-base font-bold text-slate-600">{record.documents.filter((item) => !item.isDeleted).length} file{record.documents.filter((item) => !item.isDeleted).length === 1 ? '' : 's'} on this visit</p>
+              </div>
+            </div>
+            {capabilities.canUpload && <Button disabled={uploading} onClick={() => fileInput.current?.click()}><Upload size={18} /> {uploading ? 'Uploading…' : 'Upload files'}</Button>}
+          </div>
+          {capabilities.canUpload && (
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              style={{ display: 'none' }}
+              onChange={(event) => uploadSelected(event.target.files)}
+            />
+          )}
+          {uploading && <p className="border-b border-slate-100 px-5 py-3 text-base font-bold text-slate-600">Uploading the selected file…</p>}
+          {record.documents.length === 0 ? (
+            <div className="px-5 py-12 text-center">
+              <FolderOpen className="mx-auto text-slate-300" size={36} />
+              <p className="mt-3 text-base font-bold text-ink-900">No documents yet</p>
+              <p className="mx-auto mt-1 max-w-sm text-base font-bold text-slate-600">Upload labs, scans, or consent forms. Each file can be opened or downloaded.</p>
+              {capabilities.canUpload && <Button className="mt-4" onClick={() => fileInput.current?.click()}><Upload size={18} /> Upload files</Button>}
+            </div>
+          ) : (
+            <ul>
+              {record.documents.map((document) => (
+                <li key={document.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 last:border-b-0">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600"><FileText size={18} /></span>
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-ink-900">{document.originalFilename} {document.isDeleted && <Badge tone="rose">Deleted</Badge>}</p>
+                      <p className="text-base font-bold text-slate-600">{bytes(document.size)} · {document.uploadedByName} · {formatWhen(document.createdAt)}</p>
+                    </div>
                   </div>
-                )}
-              </li>
-            ))}
-            {record.documents.length === 0 && <p className="text-sm text-slate-500">No documents uploaded.</p>}
-          </ul>
+                  {!document.isDeleted && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => openProtectedFile(`/documents/${document.id}/view`, { mimeType: document.mimeType }).catch((error) => toast.error(errorMessage(error)))}><Eye size={16} /> View</Button>
+                      <Button size="sm" onClick={() => openProtectedFile(`/documents/${document.id}/download`, { downloadName: document.originalFilename, mimeType: document.mimeType }).catch((error) => toast.error(errorMessage(error)))}><Download size={16} /> Download</Button>
+                      {capabilities.canUpload && <Button size="sm" variant="danger" onClick={async () => { await api.delete(`/documents/${document.id}`, { reason: 'Removed by user' }); await load(); }}><Trash2 size={16} /> Delete</Button>}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
@@ -235,7 +352,7 @@ export default function SubmissionRecord({ id }) {
         <section className="space-y-4">
           {capabilities.canEditClinical && (
             <form className="card space-y-3 p-5" onSubmit={savePrescription}>
-              <h2 className="font-semibold">{editingRx ? 'New prescription version' : 'New prescription'}</h2>
+              <h2 className="font-bold">{editingRx ? 'New prescription version' : 'New prescription'}</h2>
               <Field label="Prescription date"><TextInput type="date" value={rxDate} onChange={(event) => setRxDate(event.target.value)} required /></Field>
               {medicines.map((medicine, index) => (
                 <div key={index} className="grid gap-2 md:grid-cols-5">
@@ -253,7 +370,7 @@ export default function SubmissionRecord({ id }) {
           {record.prescriptions.map((rx) => (
             <article key={rx.id} className="card p-5">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{rx.doctorName} · current v{rx.currentVersion}</h3>
+                <h3 className="font-bold">{rx.doctorName} · current v{rx.currentVersion}</h3>
                 <div className="flex gap-2">
                   <Button size="sm" variant="secondary" onClick={() => openProtectedPdf(`/prescriptions/${rx.id}/pdf`)}><FileText size={16} /> PDF</Button>
                   <Button size="sm" variant="secondary" onClick={() => window.print()}><Printer size={16} /> Print</Button>
@@ -262,7 +379,7 @@ export default function SubmissionRecord({ id }) {
               </div>
               {rx.versions.map((version) => (
                 <div key={version.id} className={`print-sheet mt-3 rounded-xl p-3 text-sm ${version.versionNumber === rx.currentVersion ? 'bg-teal-50' : 'bg-slate-50'}`}>
-                  <p className="font-medium">Version {version.versionNumber} · {version.prescriptionDate} · {version.editedByName}</p>
+                  <p className="font-bold">Version {version.versionNumber} · {version.prescriptionDate} · {version.editedByName}</p>
                   <ul className="mt-1 list-disc pl-5">{version.medicines.map((medicine, index) => <li key={index}>{medicine.name} — {medicine.dose}, {medicine.frequency}, {medicine.duration}. {medicine.instructions}</li>)}</ul>
                 </div>
               ))}
@@ -275,7 +392,7 @@ export default function SubmissionRecord({ id }) {
         <section className="space-y-4">
           {capabilities.canEditClinical && (
             <form className="card space-y-3 p-5" onSubmit={saveClinical}>
-              <h2 className="font-semibold">{editingRemark ? 'New remark version' : 'New clinical remark'}</h2>
+              <h2 className="font-bold">{editingRemark ? 'New remark version' : 'New clinical remark'}</h2>
               <div className="flex flex-wrap gap-3 text-sm">
                 {categories.map((category) => (
                   <label key={category.value} className="flex items-center gap-2">
@@ -291,12 +408,12 @@ export default function SubmissionRecord({ id }) {
           {record.remarks.map((remarkItem) => (
             <article key={remarkItem.id} className="card p-5 text-sm">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{remarkItem.doctorName}</h3>
+                <h3 className="font-bold">{remarkItem.doctorName}</h3>
                 {remarkItem.canEdit && <Button size="sm" onClick={() => { setEditingRemark(remarkItem.id); setNotes(remarkItem.versions[0].notes); setSelectedCategories(remarkItem.versions[0].categories); }}>Update as new version</Button>}
               </div>
               {remarkItem.versions.map((version) => (
                 <div key={version.id} className="mt-3 rounded-xl bg-slate-50 p-3">
-                  <p className="font-medium">Version {version.versionNumber} · {version.categoryLabels?.join(', ')} · {formatWhen(version.createdAt)}</p>
+                  <p className="font-bold">Version {version.versionNumber} · {version.categoryLabels?.join(', ')} · {formatWhen(version.createdAt)}</p>
                   <p className="mt-1">{version.notes}</p>
                   {version.versionNumber !== remarkItem.currentVersion && <p className="text-xs text-slate-400">Preserved historical version</p>}
                 </div>

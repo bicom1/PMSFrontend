@@ -20,7 +20,7 @@ export function ToastProvider({ children }) {
       {children}
       <div className="fixed bottom-4 right-4 z-[70] flex w-[min(100%-2rem,22rem)] flex-col gap-2">
         {toasts.map((toast) => (
-          <div key={toast.id} className={`rounded-xl px-4 py-3 text-sm text-white shadow-lg ${toast.tone === 'error' ? 'bg-rose-700' : toast.tone === 'success' ? 'bg-brand-700' : 'bg-ink-900'}`}>
+          <div key={toast.id} className={`rounded-xl px-4 py-3 text-base font-bold text-white shadow-lg ${toast.tone === 'error' ? 'bg-rose-700' : toast.tone === 'success' ? 'bg-brand-700' : 'bg-ink-900'}`}>
             {toast.message}
           </div>
         ))}
@@ -40,8 +40,8 @@ export function Button({ variant = 'primary', size = 'md', className = '', type 
     danger: 'bg-rose-600 text-white hover:bg-rose-700',
     ghost: 'text-slate-600 hover:bg-slate-100',
   };
-  const sizes = { sm: 'h-9 px-3 text-sm', md: 'h-12 px-4 text-base' };
-  return <button type={type} className={`inline-flex items-center justify-center gap-2 rounded-xl font-medium transition duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none ${variants[variant]} ${sizes[size]} ${className}`} {...props} />;
+  const sizes = { sm: 'h-10 px-3 text-base', md: 'h-12 px-4 text-base' };
+  return <button type={type} className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none ${variants[variant]} ${sizes[size]} ${className}`} {...props} />;
 }
 
 export function Field({ label, error, children }) {
@@ -49,7 +49,7 @@ export function Field({ label, error, children }) {
     <label className="block">
       {label && <span className="label">{label}</span>}
       {children}
-      {error && <span className="mt-1 block text-xs text-rose-600">{error}</span>}
+      {error && <span className="mt-1 block text-sm font-bold text-rose-600">{error}</span>}
     </label>
   );
 }
@@ -83,7 +83,14 @@ export function Badge({ tone = 'slate', children }) {
     teal: 'bg-teal-50 text-teal-800',
     rose: 'bg-rose-50 text-rose-700',
   };
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}>{children}</span>;
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-sm font-bold ${tones[tone]}`}>{children}</span>;
+}
+
+export function RecordState({ unread }) {
+  if (unread) {
+    return <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-sm font-bold text-rose-700"><span className="h-2 w-2 rounded-full bg-rose-600" />Unread</span>;
+  }
+  return <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-sm font-bold text-slate-500">Opened</span>;
 }
 
 export function statusTone(status) {
@@ -98,7 +105,7 @@ export function Modal({ open, title, children, onClose }) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-950/50 p-4 sm:items-center">
       <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-5 shadow-2xl">
         <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-lg font-semibold text-ink-900">{title}</h2>
+          <h2 className="text-xl font-bold text-ink-900">{title}</h2>
           <button type="button" className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </div>
         {children}
@@ -109,7 +116,7 @@ export function Modal({ open, title, children, onClose }) {
 
 export function Spinner({ label = 'Loading' }) {
   return (
-    <div className="flex items-center gap-3 text-sm text-slate-500" role="status">
+    <div className="flex items-center gap-3 text-base font-bold text-slate-500" role="status">
       <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-200 border-t-brand-600" />
       {label}
     </div>
@@ -120,8 +127,8 @@ export function EmptyState({ title, text }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
       <Inbox className="mx-auto text-slate-300" size={36} />
-      <h3 className="mt-3 text-base font-semibold text-slate-800">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{text}</p>
+      <h3 className="mt-3 text-lg font-bold text-slate-800">{title}</h3>
+      <p className="mx-auto mt-2 max-w-md text-base font-bold text-slate-500">{text}</p>
     </div>
   );
 }
@@ -129,7 +136,7 @@ export function EmptyState({ title, text }) {
 export function Pagination({ meta, onPage }) {
   if (!meta || meta.totalPages <= 1) return null;
   return (
-    <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+    <div className="mt-4 flex items-center justify-between text-base font-bold text-slate-600">
       <span>{meta.total} records</span>
       <div className="flex gap-2">
         <Button size="sm" variant="secondary" disabled={meta.page <= 1} onClick={() => onPage(meta.page - 1)}><ChevronLeft size={16} /> Previous</Button>
@@ -144,23 +151,23 @@ export function PageHeader({ title, text, actions }) {
   return (
     <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl">{title}</h1>
-        {text && <p className="mt-2 text-base text-slate-500">{text}</p>}
+        <h1 className="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">{title}</h1>
+        {text && <p className="mt-2 text-lg font-bold text-slate-600">{text}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   );
 }
 
-export function StatCard({ label, value, hint, icon: Icon }) {
+export function StatCard({ label, value, hint, icon: Icon, className = '' }) {
   return (
-    <div className="card p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+    <div className={`card h-full p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg ${className}`}>
       <div className="flex items-start justify-between gap-3">
-        <p className="text-base text-slate-500">{label}</p>
+        <p className="text-lg font-bold text-slate-600">{label}</p>
         {Icon && <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-brand-700"><Icon size={18} /></span>}
       </div>
-      <p className="mt-2 text-4xl font-semibold text-ink-900">{value ?? '—'}</p>
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+      <p className="mt-2 text-4xl font-bold text-ink-900">{value ?? '—'}</p>
+      {hint && <p className="mt-1 text-sm font-bold text-slate-500">{hint}</p>}
     </div>
   );
 }

@@ -71,7 +71,7 @@ export default function ReportScreen({ allowClinical = false }) {
       {analytics && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="card p-4">
-            <h2 className="font-semibold">Booked vs not booked · {analytics.conversion.rate}%</h2>
+            <h2 className="font-bold">Booked vs not booked · {analytics.conversion.rate}%</h2>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -84,7 +84,7 @@ export default function ReportScreen({ allowClinical = false }) {
             </div>
           </div>
           <div className="card p-4">
-            <h2 className="font-semibold">Procedures</h2>
+            <h2 className="font-bold">Procedures</h2>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={analytics.proceduresPerDepartment}>
@@ -100,7 +100,7 @@ export default function ReportScreen({ allowClinical = false }) {
         </div>
       )}
       <div className="card p-4">
-        <p className="mb-3 text-sm text-slate-500">{report?.meta?.total || 0} matching records</p>
+        <p className="mb-3 text-base font-bold text-slate-600">{report?.meta?.total || 0} matching records</p>
         <DataTable
           rows={report?.items || []}
           rowKey={(row) => row.id}
