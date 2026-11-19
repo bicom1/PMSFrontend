@@ -41,7 +41,7 @@ export function Button({ variant = 'primary', size = 'md', className = '', type 
     ghost: 'text-slate-600 hover:bg-slate-100',
   };
   const sizes = { sm: 'h-10 px-3 text-base', md: 'h-12 px-4 text-base' };
-  return <button type={type} className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none ${variants[variant]} ${sizes[size]} ${className}`} {...props} />;
+  return <button type={type} className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition duration-200 sm:hover:-translate-y-0.5 sm:hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none ${variants[variant]} ${sizes[size]} ${className}`} {...props} />;
 }
 
 export function Field({ label, error, children }) {
@@ -136,9 +136,9 @@ export function EmptyState({ title, text }) {
 export function Pagination({ meta, onPage }) {
   if (!meta || meta.totalPages <= 1) return null;
   return (
-    <div className="mt-4 flex items-center justify-between text-base font-bold text-slate-600">
+    <div className="mt-4 flex flex-col gap-3 text-base font-bold text-slate-600 sm:flex-row sm:items-center sm:justify-between">
       <span>{meta.total} records</span>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" disabled={meta.page <= 1} onClick={() => onPage(meta.page - 1)}><ChevronLeft size={16} /> Previous</Button>
         <span className="px-2 py-2">Page {meta.page} of {meta.totalPages}</span>
         <Button size="sm" variant="secondary" disabled={meta.page >= meta.totalPages} onClick={() => onPage(meta.page + 1)}>Next <ChevronRight size={16} /></Button>
@@ -149,24 +149,24 @@ export function Pagination({ meta, onPage }) {
 
 export function PageHeader({ title, text, actions }) {
   return (
-    <div className="mb-5 flex flex-col gap-3 rounded-2xl bg-ink-900 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{title}</h1>
-        {text && <p className="mt-2 text-lg font-bold text-white">{text}</p>}
+    <div className="mb-5 flex flex-col gap-3 rounded-2xl bg-ink-900 px-4 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-5">
+      <div className="min-w-0">
+        <h1 className="break-words text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">{title}</h1>
+        {text && <p className="mt-2 text-base font-bold text-white sm:text-lg">{text}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap [&>button]:w-full sm:[&>button]:w-auto">{actions}</div>}
     </div>
   );
 }
 
 export function StatCard({ label, value, hint, icon: Icon, className = '' }) {
   return (
-    <div className={`card h-full p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg ${className}`}>
+    <div className={`card h-full p-4 transition duration-200 sm:p-5 sm:hover:-translate-y-0.5 sm:hover:shadow-lg ${className}`}>
       <div className="flex items-start justify-between gap-3">
         <p className="text-lg font-bold text-slate-600">{label}</p>
         {Icon && <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-brand-700"><Icon size={18} /></span>}
       </div>
-      <p className="mt-2 text-4xl font-bold text-ink-900">{value ?? '—'}</p>
+      <p className="mt-2 text-3xl font-bold text-ink-900 sm:text-4xl">{value ?? '—'}</p>
       {hint && <p className="mt-1 text-sm font-bold text-slate-500">{hint}</p>}
     </div>
   );

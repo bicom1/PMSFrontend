@@ -48,11 +48,11 @@ export default function DashboardScreen({ role }) {
   }
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-4 rounded-2xl bg-ink-900 px-5 py-4 text-white">
-        <ClinicLogo className="h-20 w-20 shrink-0" />
-        <div>
+      <div className="flex items-center gap-3 rounded-2xl bg-ink-900 px-4 py-4 text-white sm:gap-4 sm:px-5">
+        <ClinicLogo className="h-16 w-16 shrink-0 sm:h-20 sm:w-20" />
+        <div className="min-w-0">
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-teal-100">Enfield Royal Clinics</p>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Dashboard</h1>
           <p className="mt-1 text-base font-bold text-slate-300">Live clinic activity from the patient record.</p>
         </div>
       </div>
@@ -60,8 +60,8 @@ export default function DashboardScreen({ role }) {
         {stats.map((item, index) => <StatCard key={item.label} {...item} className={cardSpan(index)} />)}
       </div>
       {data.analytics && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="card p-4">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+          <div className="card min-w-0 p-4">
             <h2 className="mb-3 text-xl font-bold">Submissions per day</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -75,7 +75,7 @@ export default function DashboardScreen({ role }) {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="card p-4">
+          <div className="card min-w-0 overflow-hidden p-4">
             <h2 className="mb-3 text-xl font-bold">Bookings per doctor</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">

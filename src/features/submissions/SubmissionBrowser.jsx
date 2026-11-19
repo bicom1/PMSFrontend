@@ -38,7 +38,7 @@ export default function SubmissionBrowser({ title, endpoint, basePath, doctorMod
   return (
     <div>
       <PageHeader title={title} text={doctorMode ? 'Patients assigned to you in your departments.' : 'Search and filter live submissions.'} />
-      <div className="card mb-4 grid gap-3 p-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="card mb-4 grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-6">
         <TextInput placeholder="Name, phone, or ID" value={query.search} onChange={(event) => setQuery({ ...query, page: 1, search: event.target.value })} />
         <select className="field" value={query.departmentCode} onChange={(event) => setQuery({ ...query, page: 1, departmentCode: event.target.value })}>
           <option value="">{doctorMode ? 'My departments' : 'All departments'}</option>

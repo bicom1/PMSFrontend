@@ -55,7 +55,7 @@ export default function DoctorAlerts() {
         {unread > 0 && <span className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-xs font-bold text-white">{unread}</span>}
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-2 w-96 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+        <div className="fixed inset-x-3 top-16 z-30 max-h-[70vh] overflow-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:max-h-none sm:w-96">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-lg font-bold text-ink-900">{title}</p>

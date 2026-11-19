@@ -272,7 +272,7 @@ export function MasterDataAdmin() {
       </aside>
       <div>
         <PageHeader title={types.find((item) => item.type === type)?.label || 'Master data'} text={types.find((item) => item.type === type)?.description} />
-        <form className="card mb-4 flex gap-2 p-4" onSubmit={async (event) => {
+        <form className="card mb-4 flex flex-col gap-2 p-4 sm:flex-row" onSubmit={async (event) => {
           event.preventDefault();
           try {
             await api.post('/master-data', { type, label, allowOther: label.toLowerCase() === 'other', metadata: type === 'SKIN_FIELD' ? { inputType: 'text', required: false, pendingConfirmation: true } : {} });

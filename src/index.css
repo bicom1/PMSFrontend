@@ -6,8 +6,11 @@
   html {
     font-size: 18px;
   }
+  html, body, #root {
+    max-width: 100%;
+  }
   body {
-    @apply bg-slate-100 font-semibold text-slate-800 antialiased;
+    @apply overflow-x-hidden bg-slate-100 font-semibold text-slate-800 antialiased;
   }
   h1, h2, h3, h4 {
     @apply font-bold tracking-tight text-ink-900;

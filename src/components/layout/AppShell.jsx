@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import DoctorAlerts from './DoctorAlerts.jsx';
 import { useDispatch, useSelector } from 'react-redux';
 import { api } from '../../services/api.js';
@@ -45,18 +45,18 @@ export default function AppShell({ items, children }) {
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button type="button" className="absolute inset-0 bg-ink-950/50" aria-label="Close menu" onClick={() => setOpen(false)} />
-          <div className="relative h-full w-72">{nav}</div>
+          <div className="relative h-full w-[min(100%,20rem)] shadow-2xl">{nav}</div>
         </div>
       )}
       <div className="min-w-0">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
-          <button type="button" className="rounded-lg p-2 transition hover:bg-slate-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu size={20} /></button>
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:px-4">
+          <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-xl transition hover:bg-slate-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu size={22} /></button>
+          <p className="min-w-0 truncate text-base font-bold text-ink-900 lg:hidden">Enfield Royal Clinics</p>
           <div className="ml-auto flex items-center gap-1">
             {['ADMIN', 'CLINIC_MANAGER', 'DOCTOR'].includes(user?.role) && <DoctorAlerts />}
-            <button type="button" className="rounded-lg p-2 lg:hidden" onClick={() => setOpen(false)} aria-label="Menu"><X size={18} className="opacity-0" /></button>
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</main>
+        <main className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6">{children}</main>
       </div>
     </div>
   );

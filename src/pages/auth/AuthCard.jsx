@@ -48,15 +48,15 @@ export default function AuthCard({ title, text, children }) {
           <span key={orb.className} className={`auth-orb absolute rounded-full blur-3xl ${orb.className}`} />
         ))}
       </div>
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-3 py-4 sm:px-4 sm:py-10">
         <div ref={cardRef} className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-card backdrop-blur">
-          <div className="auth-mark bg-ink-950 px-8 pb-6 pt-8 text-center">
-            <ClinicLogo className="mx-auto h-40 w-40" />
+          <div className="auth-mark bg-ink-950 px-5 pb-3 pt-4 text-center sm:px-8 sm:pb-6 sm:pt-8">
+            <ClinicLogo className="mx-auto h-24 w-24 sm:h-40 sm:w-40" />
           </div>
-          <div className="px-8 py-8 sm:px-10">
-            <div className="mb-8 text-center">
-              <h1 className="text-4xl font-bold tracking-tight text-ink-900 sm:text-5xl">{title}</h1>
-              {text && <p className="mt-3 text-lg font-bold leading-7 text-slate-600">{text}</p>}
+          <div className="px-4 py-5 sm:px-10 sm:py-8">
+            <div className="mb-5 text-center sm:mb-8">
+              <h1 className="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl lg:text-5xl">{title}</h1>
+              {text && <p className="mt-2 text-base font-bold leading-6 text-slate-600 sm:mt-3 sm:text-lg sm:leading-7">{text}</p>}
             </div>
             {children}
           </div>

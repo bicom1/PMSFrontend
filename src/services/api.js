@@ -46,19 +46,59 @@ export const api = {
   delete: (url, body) => http.delete(url, { data: body }).then((res) => res.data),
 };
 
-export async function openProtectedFile(path, { downloadName, mimeType } = {}) {
+const viewableByExtension = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+  txt: 'text/plain',
+  csv: 'text/csv',
+  json: 'application/json',
+  html: 'text/html',
+  htm: 'text/html',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+};
+
+function displayType(mimeType, filename) {
+  const header = String(mimeType || '').split(';')[0].trim().toLowerCase();
+  const extension = (String(filename || '').toLowerCase().match(/\.([a-z0-9]{1,8})$/) || [])[1] || '';
+  if (header && header !== 'application/octet-stream') return header;
+  return viewableByExtension[extension] || header || 'application/octet-stream';
+}
+
+export async function openProtectedFile(path, { downloadName, mimeType, filename } = {}) {
+  const preview = downloadName ? null : window.open('', '_blank');
+  if (preview) {
+    preview.document.title = filename || 'Document';
+    preview.document.body.innerHTML = '<p style="font-family:Segoe UI,sans-serif;padding:24px">Opening document…</p>';
+  }
   const response = await http.get(path, { responseType: 'blob' });
-  const type = mimeType || response.headers['content-type'] || 'application/octet-stream';
+  const type = displayType(mimeType || response.headers['content-type'], filename || downloadName);
   const url = URL.createObjectURL(new Blob([response.data], { type }));
   if (downloadName) {
     const link = document.createElement('a');
     link.href = url;
     link.download = downloadName;
     link.click();
+  } else if (preview) {
+    const title = String(filename || 'Document').replace(/[<>"']/g, '');
+    const frame = type.startsWith('image/')
+      ? `<img alt="${title}" src="${url}" style="max-width:100%;height:auto;display:block;margin:auto" />`
+      : `<iframe title="${title}" src="${url}" style="border:0;position:fixed;inset:0;width:100%;height:100%"></iframe>`;
+    preview.document.title = title;
+    preview.document.body.innerHTML = frame;
+    preview.document.body.style.margin = '0';
   } else {
-    window.open(url, '_blank', 'noopener');
+    window.open(url, '_blank');
   }
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  setTimeout(() => URL.revokeObjectURL(url), 120_000);
 }
 
 export function openProtectedPdf(path, options) {

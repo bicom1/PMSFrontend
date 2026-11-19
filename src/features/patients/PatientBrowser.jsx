@@ -76,7 +76,7 @@ export default function PatientBrowser({ basePath }) {
 
   return (
     <div>
-      <PageHeader title="Patients" text="Hover a row for a quick view. Click it to open the full record." />
+      <PageHeader title="Patients" text="Tap a row to open the full record. On a large screen, hover for a quick view." />
       <div className="card mb-4 grid gap-3 p-4 md:grid-cols-3">
         <TextInput placeholder="Name, phone, or ID" value={query.search} onChange={(event) => setQuery({ ...query, page: 1, search: event.target.value })} />
         <select className="field" value={query.departmentCode} onChange={(event) => setQuery({ ...query, page: 1, departmentCode: event.target.value })}>
@@ -91,7 +91,7 @@ export default function PatientBrowser({ basePath }) {
             <table className="min-w-full text-left text-base">
               <thead className="border-b border-slate-200 text-sm font-bold uppercase tracking-wide text-slate-600">
                 <tr>
-                  {['Record', 'Patient ID', 'Name', 'Phone', 'CNIC', 'Department', 'Gender'].map((header) => <th key={header} className="px-3 py-3 font-bold">{header}</th>)}
+                  {['Record', 'Patient ID', 'Name', 'Phone', 'CNIC', 'Department', 'Gender'].map((header) => <th key={header} className="whitespace-nowrap px-3 py-3 font-bold">{header}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -119,7 +119,7 @@ export default function PatientBrowser({ basePath }) {
           </div>
           <Pagination meta={result?.meta} onPage={(page) => setQuery({ ...query, page })} />
         </div>
-        <aside className="card sticky top-20 p-5">
+        <aside className="card sticky top-20 hidden p-5 lg:block">
           {preview ? (
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-teal-700">{preview.departmentCode}</p>
@@ -139,11 +139,11 @@ export default function PatientBrowser({ basePath }) {
 
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end bg-ink-950/40" onClick={() => setSelected(null)}>
-          <div className="h-full w-full max-w-xl overflow-auto bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <div className="h-full w-full max-w-xl overflow-auto bg-white p-4 shadow-2xl sm:p-6" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-teal-700">{(detail?.patient || selected).departmentCode}</p>
-                <h2 className="mt-1 text-3xl font-bold text-ink-900">{(detail?.patient || selected).fullName}</h2>
+                <h2 className="mt-1 break-words text-2xl font-bold text-ink-900 sm:text-3xl">{(detail?.patient || selected).fullName}</h2>
                 <div className="mt-2"><RecordState unread={selected.unread} /></div>
                 <p className="text-slate-500">{(detail?.patient || selected).patientCode}</p>
               </div>

@@ -336,7 +336,7 @@ export default function SubmissionRecord({ id }) {
                   </div>
                   {!document.isDeleted && (
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => openProtectedFile(`/documents/${document.id}/view`, { mimeType: document.mimeType }).catch((error) => toast.error(errorMessage(error)))}><Eye size={16} /> View</Button>
+                      <Button size="sm" variant="secondary" onClick={() => openProtectedFile(`/documents/${document.id}/view`, { mimeType: document.mimeType, filename: document.originalFilename }).catch((error) => toast.error(errorMessage(error)))}><Eye size={16} /> View</Button>
                       <Button size="sm" onClick={() => openProtectedFile(`/documents/${document.id}/download`, { downloadName: document.originalFilename, mimeType: document.mimeType }).catch((error) => toast.error(errorMessage(error)))}><Download size={16} /> Download</Button>
                       {capabilities.canUpload && <Button size="sm" variant="danger" onClick={async () => { await api.delete(`/documents/${document.id}`, { reason: 'Removed by user' }); await load(); }}><Trash2 size={16} /> Delete</Button>}
                     </div>

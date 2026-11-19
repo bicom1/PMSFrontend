@@ -47,7 +47,7 @@ export default function ReportScreen({ allowClinical = false }) {
         <Button variant="secondary" onClick={() => download('/reports/export.csv', 'cpms-report.csv')}><Download size={18} /> Export CSV</Button>
         <Button onClick={() => download('/reports/export.xlsx', 'cpms-report.xlsx')}><FileSpreadsheet size={18} /> Export Excel</Button>
       </>} />
-      <div className="card grid gap-3 p-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="card grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-6">
         <TextInput placeholder="Name, phone, or ID" value={query.search} onChange={(event) => setQuery({ ...query, page: 1, search: event.target.value })} />
         <select className="field" value={query.departmentCode} onChange={(event) => setQuery({ ...query, page: 1, departmentCode: event.target.value })}>
           <option value="">All departments</option><option value="SKIN">Skin</option><option value="SURGERY">Surgery</option>
@@ -69,8 +69,8 @@ export default function ReportScreen({ allowClinical = false }) {
         <TextInput type="date" value={query.dateTo} onChange={(event) => setQuery({ ...query, page: 1, dateTo: event.target.value })} />
       </div>
       {analytics && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="card p-4">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+          <div className="card min-w-0 overflow-hidden p-4">
             <h2 className="font-bold">Booked vs not booked · {analytics.conversion.rate}%</h2>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -83,7 +83,7 @@ export default function ReportScreen({ allowClinical = false }) {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="card p-4">
+          <div className="card min-w-0 overflow-hidden p-4">
             <h2 className="font-bold">Procedures</h2>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -99,7 +99,7 @@ export default function ReportScreen({ allowClinical = false }) {
           </div>
         </div>
       )}
-      <div className="card p-4">
+      <div className="card min-w-0 overflow-hidden p-4">
         <p className="mb-3 text-base font-bold text-slate-600">{report?.meta?.total || 0} matching records</p>
         <DataTable
           rows={report?.items || []}
