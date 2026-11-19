@@ -284,7 +284,7 @@ export default function IntakeForm({ departmentCode }) {
       <PageHeader title={departmentCode === 'SKIN' ? 'Skin department form' : 'Surgery department form'} text="Register a visit. A returning patient keeps the same department ID." />
       <section className="card space-y-4 p-5">
         <h2 className="text-xl font-bold text-ink-900">Identification</h2>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Contact number" error={errors.contactNumber?.message}><TextInput {...register('contactNumber')} /></Field>
           <Field label="Patient name" error={errors.fullName?.message}><TextInput {...register('fullName')} /></Field>
           <Field label="CNIC" error={errors.cnic?.message}><TextInput placeholder="12345-1234567-1" {...register('cnic')} /></Field>
@@ -315,8 +315,8 @@ export default function IntakeForm({ departmentCode }) {
         )}
       </section>
 
-      <section className="card grid gap-4 p-5 md:grid-cols-2">
-        <h2 className="text-xl font-bold text-ink-900 md:col-span-2">Personal details</h2>
+      <section className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+        <h2 className="text-xl font-bold text-ink-900 sm:col-span-2">Personal details</h2>
         <Field label="Date of birth" error={errors.dateOfBirth?.message}><TextInput type="date" {...register('dateOfBirth')} /></Field>
         <Field label="Age"><TextInput value={age} readOnly /></Field>
         <SearchableSelect label="Gender" options={genders} value={watch('gender')} onChange={(value) => setValue('gender', value, { shouldValidate: true })} error={errors.gender?.message} placeholder="Select gender" />
@@ -329,8 +329,8 @@ export default function IntakeForm({ departmentCode }) {
         <Field label="Address" error={errors.address?.message}><TextInput {...register('address')} /></Field>
       </section>
 
-      <section className="card grid gap-4 p-5 md:grid-cols-2">
-        <h2 className="text-xl font-bold text-ink-900 md:col-span-2">Visit</h2>
+      <section className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+        <h2 className="text-xl font-bold text-ink-900 sm:col-span-2">Visit</h2>
         <SearchableSelect label="Doctor" options={doctors.map((doctor) => ({ value: String(doctor.id || doctor._id), label: doctor.fullName }))} value={watch('doctorId')} onChange={(value) => setValue('doctorId', value, { shouldValidate: true })} error={errors.doctorId?.message} placeholder="Select doctor" />
         <SearchableSelect label="Procedure" options={procedures.map((procedure) => ({ value: String(procedure._id || procedure.id), label: procedure.name }))} value={watch('procedureId')} onChange={(value) => setValue('procedureId', value, { shouldValidate: true })} error={errors.procedureId?.message} placeholder="Select procedure" />
         <SearchableSelect label="Referred by" options={optionsOf(catalog.referrals)} value={referredBy} onChange={(value) => setValue('referredBy', value, { shouldValidate: true })} error={errors.referredBy?.message} placeholder="Select referral" />
@@ -352,8 +352,8 @@ export default function IntakeForm({ departmentCode }) {
           </div>
         </section>
       ) : (
-        <section className="card grid gap-4 p-5 md:grid-cols-2">
-          <h2 className="text-xl font-bold text-ink-900 md:col-span-2">Surgery details</h2>
+        <section className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+          <h2 className="text-xl font-bold text-ink-900 sm:col-span-2">Surgery details</h2>
           <SearchableSelect label="Anesthesia type" options={optionsOf(catalog.surgery?.anesthesia)} value={watch('anesthesiaType')} onChange={(value) => setValue('anesthesiaType', value)} placeholder="Select anesthesia" />
           <SearchableSelect label="Diet" options={optionsOf(catalog.surgery?.diet)} value={watch('diet')} onChange={(value) => setValue('diet', value)} placeholder="Select diet" />
           <SearchableSelect label="Blood test status" options={optionsOf(catalog.surgery?.blood)} value={watch('bloodTestStatus')} onChange={(value) => setValue('bloodTestStatus', value)} placeholder="Select blood test status" />
@@ -378,8 +378,8 @@ export default function IntakeForm({ departmentCode }) {
         {correcting && <Field label="Correction reason"><TextInput value={reason} onChange={(event) => setReason(event.target.value)} /></Field>}
       </section>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={submitting}><Send size={18} />{submitting ? 'Saving…' : 'Submit form'}</Button>
+      <div className="flex sm:justify-end">
+        <Button type="submit" className="w-full sm:w-auto" disabled={submitting}><Send size={18} />{submitting ? 'Saving…' : 'Submit form'}</Button>
       </div>
 
       <Modal open={conflictOpen} title="Verify this identity" onClose={() => setConflictOpen(false)}>

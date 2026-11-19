@@ -106,7 +106,7 @@ export function UserAdmin({ role, title }) {
             ...(role === 'CLINIC_MANAGER' ? [] : [{ key: 'departments', header: 'Departments', render: (row) => row.departments.map((item) => item.code).join(', ') || '—' }]),
             { key: 'isActive', header: 'Status', render: (row) => <Badge tone={row.isActive ? 'green' : 'rose'}>{row.isActive ? 'Active' : 'Inactive'}</Badge> },
             { key: 'actions', header: '', render: (row) => (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" onClick={() => setEditing({
                   id: row.id,
                   fullName: row.fullName || '',
@@ -159,7 +159,7 @@ export function UserAdmin({ role, title }) {
               {departments.map((department) => {
                 const departmentId = String(department._id || department.id);
                 return (
-                  <label key={departmentId} className="flex items-center gap-2">
+                  <label key={departmentId} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 text-base font-bold">
                     <input type="checkbox" checked={form.departments.includes(departmentId)} onChange={(event) => setForm({ ...form, departments: event.target.checked ? [...form.departments, departmentId] : form.departments.filter((id) => id !== departmentId) })} />
                     {department.name}
                   </label>
@@ -168,7 +168,7 @@ export function UserAdmin({ role, title }) {
               {fieldErrors.departments && <p className="text-xs text-rose-600">{fieldErrors.departments}</p>}
             </div>
           )}
-          <Button type="submit">Create</Button>
+          <Button type="submit" className="w-full sm:w-auto">Create</Button>
         </form>
       </Modal>
       <Modal open={Boolean(editing)} title="Edit account" onClose={() => setEditing(null)}>
@@ -182,7 +182,7 @@ export function UserAdmin({ role, title }) {
                 {departments.map((department) => {
                   const departmentId = String(department._id || department.id);
                   return (
-                    <label key={departmentId} className="flex items-center gap-2">
+                    <label key={departmentId} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 text-base font-bold">
                       <input type="checkbox" checked={editing.departments.includes(departmentId)} onChange={(event) => setEditing({ ...editing, departments: event.target.checked ? [...editing.departments, departmentId] : editing.departments.filter((id) => id !== departmentId) })} />
                       {department.name}
                     </label>
@@ -190,7 +190,7 @@ export function UserAdmin({ role, title }) {
                 })}
               </div>
             )}
-            <Button type="submit">Save</Button>
+            <Button type="submit" className="w-full sm:w-auto">Save</Button>
           </form>
         )}
       </Modal>
@@ -230,7 +230,7 @@ export function ProcedureAdmin() {
   return (
     <div className="space-y-4">
       <PageHeader title="Procedures" text="Procedure names are provisional until the clinic confirms the real list." />
-      <form className="card grid gap-3 p-4 md:grid-cols-4" onSubmit={async (event) => {
+      <form className="card grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4" onSubmit={async (event) => {
         event.preventDefault();
         try { await api.post('/procedures', form); toast.success('Procedure added'); reload(); }
         catch (error) { toast.error(errorMessage(error)); }

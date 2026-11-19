@@ -151,7 +151,7 @@ export default function SubmissionRecord({ id }) {
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+              <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div className="flex items-center gap-3">
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100 text-brand-700"><CalendarCheck size={20} /></span>
                   <div>
@@ -355,7 +355,7 @@ export default function SubmissionRecord({ id }) {
               <h2 className="font-bold">{editingRx ? 'New prescription version' : 'New prescription'}</h2>
               <Field label="Prescription date"><TextInput type="date" value={rxDate} onChange={(event) => setRxDate(event.target.value)} required /></Field>
               {medicines.map((medicine, index) => (
-                <div key={index} className="grid gap-2 md:grid-cols-5">
+                <div key={index} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                   {['name', 'dose', 'frequency', 'duration', 'instructions'].map((key) => (
                     <TextInput key={key} placeholder={key} value={medicine[key]} onChange={(event) => setMedicines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: event.target.value } : item))} />
                   ))}
@@ -369,9 +369,9 @@ export default function SubmissionRecord({ id }) {
           )}
           {record.prescriptions.map((rx) => (
             <article key={rx.id} className="card p-5">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="font-bold">{rx.doctorName} · current v{rx.currentVersion}</h3>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" onClick={() => openProtectedPdf(`/prescriptions/${rx.id}/pdf`)}><FileText size={16} /> PDF</Button>
                   <Button size="sm" variant="secondary" onClick={() => window.print()}><Printer size={16} /> Print</Button>
                   {rx.canEdit && <Button size="sm" onClick={() => { setEditingRx(rx.id); setTab('Prescriptions'); const current = rx.versions[0]; setMedicines(current.medicines); setRxDate(current.prescriptionDate); }}>Edit as new version</Button>}

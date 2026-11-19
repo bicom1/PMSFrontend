@@ -77,7 +77,7 @@ export default function PatientBrowser({ basePath }) {
   return (
     <div>
       <PageHeader title="Patients" text="Tap a row to open the full record. On a large screen, hover for a quick view." />
-      <div className="card mb-4 grid gap-3 p-4 md:grid-cols-3">
+      <div className="card mb-4 grid gap-3 p-4 sm:grid-cols-2">
         <TextInput placeholder="Name, phone, or ID" value={query.search} onChange={(event) => setQuery({ ...query, page: 1, search: event.target.value })} />
         <select className="field" value={query.departmentCode} onChange={(event) => setQuery({ ...query, page: 1, departmentCode: event.target.value })}>
           <option value="">All departments</option>
@@ -87,7 +87,26 @@ export default function PatientBrowser({ basePath }) {
       </div>
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="card p-4">
-          <div className="overflow-x-auto">
+          <div className="space-y-3 md:hidden">
+            {rows.map((row) => (
+              <button key={row.id} type="button" className={`w-full rounded-2xl border border-slate-200 p-4 text-left ${row.unread ? 'bg-rose-50/80' : 'bg-slate-50'}`} onClick={() => openPatient(row)}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words text-lg font-bold text-ink-900">{row.fullName}</p>
+                    <p className="text-base font-bold text-brand-700">{row.patientCode}</p>
+                  </div>
+                  <RecordState unread={row.unread} />
+                </div>
+                <dl className="mt-3 space-y-1 text-base">
+                  <div className="flex justify-between gap-3"><dt className="text-slate-400">Phone</dt><dd className="font-bold">{row.contactNumber || '—'}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-slate-400">CNIC</dt><dd className="font-bold">{row.cnicMasked || '—'}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-slate-400">Department</dt><dd className="font-bold">{row.departmentCode || '—'}</dd></div>
+                </dl>
+              </button>
+            ))}
+            {rows.length === 0 && <p className="px-2 py-8 text-center text-base font-bold text-slate-500">No patients match this search.</p>}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-full text-left text-base">
               <thead className="border-b border-slate-200 text-sm font-bold uppercase tracking-wide text-slate-600">
                 <tr>
