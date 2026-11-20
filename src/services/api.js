@@ -73,6 +73,13 @@ function displayType(mimeType, filename) {
   return viewableByExtension[extension] || header || 'application/octet-stream';
 }
 
+export async function loadProtectedFile(path, { mimeType, filename } = {}) {
+  const response = await http.get(path, { responseType: 'blob' });
+  const type = displayType(mimeType || response.headers['content-type'], filename);
+  const url = URL.createObjectURL(new Blob([response.data], { type }));
+  return { url, type };
+}
+
 export async function openProtectedFile(path, { downloadName, mimeType, filename } = {}) {
   const preview = downloadName ? null : window.open('', '_blank');
   if (preview) {

@@ -1,8 +1,8 @@
-import { CalendarCheck, CalendarX, Download, Eye, FileText, FolderOpen, Printer, Stethoscope, StickyNote, Trash2, Upload, UserRoundPen } from 'lucide-react';
+import { CalendarCheck, CalendarX, Download, Eye, FileText, FolderOpen, Printer, Stethoscope, StickyNote, Trash2, Upload, UserRoundPen, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { api, openProtectedFile, openProtectedPdf } from '../../services/api.js';
+import { api, loadProtectedFile, openProtectedFile, openProtectedPdf } from '../../services/api.js';
 import { bytes, clinicToday, errorMessage, formatWhen } from '../../utils/format.js';
-import { Badge, Button, Field, Modal, PageHeader, Spinner, TextArea, TextInput, statusTone, useToast } from '../../components/common/ui.jsx';
+import { Badge, Button, Field, PageHeader, Spinner, TextArea, TextInput, statusTone, useToast } from '../../components/common/ui.jsx';
 
 const tabs = ['Overview', 'Patient profile', 'Medical history', 'Documents', 'Prescriptions', 'Clinical remarks'];
 
@@ -27,7 +27,47 @@ export default function SubmissionRecord({ id }) {
   const [editingRemark, setEditingRemark] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [historyId, setHistoryId] = useState(null);
+  const [preview, setPreview] = useState(null);
   const fileInput = useRef(null);
+  const previewUrl = useRef(null);
+  const viewRequest = useRef(0);
+
+  function closePreview() {
+    viewRequest.current += 1;
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    previewUrl.current = null;
+    setPreview(null);
+  }
+
+  async function viewDocument(file) {
+    const request = ++viewRequest.current;
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    previewUrl.current = null;
+    setPreview({ name: file.originalFilename, loading: true });
+    try {
+      const loaded = await loadProtectedFile(`/documents/${file.id}/view`, { mimeType: file.mimeType, filename: file.originalFilename });
+      if (request !== viewRequest.current) {
+        URL.revokeObjectURL(loaded.url);
+        return;
+      }
+      previewUrl.current = loaded.url;
+      setPreview({ name: file.originalFilename, url: loaded.url, type: loaded.type });
+    } catch (error) {
+      if (request !== viewRequest.current) return;
+      setPreview(null);
+      toast.error(errorMessage(error));
+    }
+  }
+
+  useEffect(() => () => {
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+  }, []);
+  useEffect(() => {
+    if (!preview) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') closePreview(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [preview]);
 
   async function load() {
     const body = await api.get(`/submissions/${id}`);
@@ -336,7 +376,7 @@ export default function SubmissionRecord({ id }) {
                   </div>
                   {!document.isDeleted && (
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => openProtectedFile(`/documents/${document.id}/view`, { mimeType: document.mimeType, filename: document.originalFilename }).catch((error) => toast.error(errorMessage(error)))}><Eye size={16} /> View</Button>
+                      <Button size="sm" variant="secondary" onClick={() => viewDocument(document)}><Eye size={16} /> View</Button>
                       <Button size="sm" onClick={() => openProtectedFile(`/documents/${document.id}/download`, { downloadName: document.originalFilename, mimeType: document.mimeType }).catch((error) => toast.error(errorMessage(error)))}><Download size={16} /> Download</Button>
                       {capabilities.canUpload && <Button size="sm" variant="danger" onClick={async () => { await api.delete(`/documents/${document.id}`, { reason: 'Removed by user' }); await load(); }}><Trash2 size={16} /> Delete</Button>}
                     </div>
@@ -422,7 +462,31 @@ export default function SubmissionRecord({ id }) {
           ))}
         </section>
       )}
-      <Modal open={false} title="" onClose={() => {}} />
+      {preview && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-950/70 p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={preview.name}>
+          <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[min(92vh,900px)] sm:max-w-6xl sm:rounded-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+              <p className="min-w-0 truncate text-lg font-bold text-ink-900">{preview.name}</p>
+              <button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-ink-900" onClick={closePreview} aria-label="Close document"><X size={22} /></button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto bg-slate-100">
+              {preview.loading && <p className="p-6 text-base font-bold text-slate-600">Opening document…</p>}
+              {!preview.loading && preview.type?.startsWith('image/') && <img src={preview.url} alt={preview.name} className="mx-auto max-h-full max-w-full object-contain" />}
+              {!preview.loading && preview.type === 'application/pdf' && <iframe title={preview.name} src={preview.url} className="h-full min-h-[70vh] w-full border-0 bg-white" />}
+              {!preview.loading && preview.type !== 'application/pdf' && (preview.type?.startsWith('text/') || preview.type === 'application/json') && <iframe title={preview.name} src={preview.url} sandbox="" className="h-full min-h-[70vh] w-full border-0 bg-white" />}
+              {!preview.loading && preview.type?.startsWith('video/') && <video src={preview.url} controls className="mx-auto max-h-full max-w-full" />}
+              {!preview.loading && preview.type?.startsWith('audio/') && <audio src={preview.url} controls className="m-6 w-[min(100%-3rem,32rem)]" />}
+              {!preview.loading && preview.url && !preview.type?.startsWith('image/') && preview.type !== 'application/pdf' && !preview.type?.startsWith('text/') && preview.type !== 'application/json' && !preview.type?.startsWith('video/') && !preview.type?.startsWith('audio/') && (
+                <div className="mx-auto max-w-md px-6 py-16 text-center">
+                  <FileText className="mx-auto text-slate-300" size={40} />
+                  <p className="mt-3 text-lg font-bold text-ink-900">This file cannot be shown in the page</p>
+                  <p className="mt-2 text-base font-bold text-slate-600">PDF, images, and text open here. Use Download for Word, Excel, and other office files.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
