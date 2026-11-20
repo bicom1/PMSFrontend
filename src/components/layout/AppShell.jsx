@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import DoctorAlerts from './DoctorAlerts.jsx';
+import ClinicLogo from '../common/ClinicLogo.jsx';
 import { useDispatch, useSelector } from 'react-redux';
 import { api } from '../../services/api.js';
 import { clearSession } from '../../store/authSlice.js';
@@ -11,6 +12,8 @@ export default function AppShell({ items, children }) {
   const user = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const onDashboard = pathname === '/admin' || pathname === '/manager' || pathname === '/doctor';
 
   async function logout() {
     try { await api.post('/auth/logout'); } catch { /* cookie may already be gone */ }
@@ -49,11 +52,22 @@ export default function AppShell({ items, children }) {
         </div>
       )}
       <div className="min-w-0">
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:px-4">
-          <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-xl transition hover:bg-slate-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu size={22} /></button>
-          <p className="min-w-0 truncate text-base font-bold text-ink-900 lg:hidden">Enfield Royal Clinics</p>
-          <div className="ml-auto flex items-center gap-1">
-            {['ADMIN', 'CLINIC_MANAGER', 'DOCTOR'].includes(user?.role) && <DoctorAlerts />}
+        <header className="sticky top-0 z-20 bg-ink-900 text-white">
+          <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-3 py-3 sm:px-6">
+            <button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white transition hover:bg-white/10 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu"><Menu size={22} /></button>
+            <ClinicLogo className="h-14 w-14 shrink-0 sm:h-16 sm:w-16" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold uppercase tracking-[0.14em] text-teal-100 sm:text-sm">Enfield Royal Clinics</p>
+              {onDashboard && (
+                <>
+                  <h1 className="truncate text-xl font-bold tracking-tight text-white sm:text-2xl">Dashboard</h1>
+                  <p className="truncate text-sm font-bold text-slate-300">Live clinic activity from the patient record.</p>
+                </>
+              )}
+            </div>
+            <div className="ml-auto shrink-0">
+              {['ADMIN', 'CLINIC_MANAGER', 'DOCTOR'].includes(user?.role) && <DoctorAlerts />}
+            </div>
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6">{children}</main>

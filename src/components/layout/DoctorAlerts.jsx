@@ -50,12 +50,12 @@ export default function DoctorAlerts() {
 
   return (
     <div className="relative">
-      <button type="button" className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100" aria-label="Notifications" onClick={() => setOpen((value) => !value)}>
+      <button type="button" className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl text-white transition hover:bg-white/10" aria-label="Notifications" onClick={() => setOpen((value) => !value)}>
         <Bell size={22} />
         {unread > 0 && <span className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-xs font-bold text-white">{unread}</span>}
       </button>
       {open && (
-        <div className="fixed inset-x-3 top-16 z-30 max-h-[70vh] overflow-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:max-h-none sm:w-96">
+        <div className="absolute right-0 z-30 mt-2 max-h-[70vh] w-[min(100vw-1.5rem,24rem)] overflow-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-800 shadow-xl">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-lg font-bold text-ink-900">{title}</p>

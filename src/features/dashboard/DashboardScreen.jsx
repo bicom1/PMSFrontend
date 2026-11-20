@@ -5,7 +5,6 @@ import { api } from '../../services/api.js';
 import { errorMessage } from '../../utils/format.js';
 import { useNavigate } from 'react-router-dom';
 import { Badge, RecordState, Spinner, StatCard, statusTone, useToast } from '../../components/common/ui.jsx';
-import ClinicLogo from '../../components/common/ClinicLogo.jsx';
 import DataTable from '../../components/tables/DataTable.jsx';
 
 export default function DashboardScreen({ role }) {
@@ -48,14 +47,6 @@ export default function DashboardScreen({ role }) {
   }
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3 rounded-2xl bg-ink-900 px-4 py-4 text-white sm:gap-4 sm:px-5">
-        <ClinicLogo className="h-16 w-16 shrink-0 sm:h-20 sm:w-20" />
-        <div className="min-w-0">
-          <p className="text-sm font-bold uppercase tracking-[0.14em] text-teal-100">Enfield Royal Clinics</p>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Dashboard</h1>
-          <p className="mt-1 text-base font-bold text-slate-300">Live clinic activity from the patient record.</p>
-        </div>
-      </div>
       <div className={gridClass}>
         {stats.map((item, index) => <StatCard key={item.label} {...item} className={cardSpan(index)} />)}
       </div>
