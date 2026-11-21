@@ -331,22 +331,121 @@ export function PolicyAdmin() {
   );
 }
 
+const AUDIT_ACTIONS = [
+  ['PATIENT_CREATED', 'Patient created'],
+  ['PATIENT_UPDATED', 'Patient updated'],
+  ['PATIENT_IDENTITY_LINKED', 'Patient linked across departments'],
+  ['PATIENT_MERGED', 'Duplicate patient merged'],
+  ['FORM_SUBMITTED', 'Form submitted'],
+  ['BOOKING_STATUS_CHANGED', 'Booking status changed'],
+  ['DOCTOR_REASSIGNED', 'Doctor reassigned'],
+  ['OPERATIONAL_REMARK_UPDATED', 'Operational remark updated'],
+  ['CONSULTATION_STATUS_CHANGED', 'Consultation status changed'],
+  ['DOCUMENT_UPLOADED', 'Document uploaded'],
+  ['DOCUMENT_VIEWED', 'Document viewed'],
+  ['DOCUMENT_DOWNLOADED', 'Document downloaded'],
+  ['DOCUMENT_DELETED', 'Document deleted'],
+  ['MEDICAL_HISTORY_DOWNLOADED', 'Medical history downloaded'],
+  ['PRESCRIPTION_CREATED', 'Prescription created'],
+  ['PRESCRIPTION_VERSIONED', 'Prescription version saved'],
+  ['CLINICAL_REMARK_CREATED', 'Clinical remark created'],
+  ['CLINICAL_REMARK_VERSIONED', 'Clinical remark version saved'],
+  ['USER_CREATED', 'Account created'],
+  ['USER_UPDATED', 'Account updated'],
+  ['USER_DEACTIVATED', 'Account deactivated'],
+  ['USER_REACTIVATED', 'Account reactivated'],
+  ['PASSWORD_RESET', 'Password reset'],
+  ['PASSWORD_CHANGED', 'Password changed'],
+  ['MASTER_DATA_CHANGED', 'Master data changed'],
+  ['PROCEDURE_CHANGED', 'Procedure changed'],
+  ['DEPARTMENT_UPDATED', 'Department updated'],
+  ['POLICY_CHANGED', 'Policy changed'],
+  ['SETTINGS_CHANGED', 'Settings changed'],
+];
+
+const AUDIT_LABELS = Object.fromEntries(AUDIT_ACTIONS);
+
+function auditText(value) {
+  if (value == null || value === '') return '—';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value).replaceAll('_', ' ');
+}
+
+function changeSummary(row) {
+  const next = row.newValue && typeof row.newValue === 'object' ? row.newValue : {};
+  const previous = row.previousValue && typeof row.previousValue === 'object' ? row.previousValue : {};
+  const parts = [
+    next.patientCode || previous.patientCode,
+    next.fullName || previous.fullName,
+    next.filename,
+    next.bookingStatus && `Booking ${String(next.bookingStatus).replaceAll('_', ' ').toLowerCase()}`,
+    next.doctorName && `Doctor ${next.doctorName}`,
+    next.consultationStatus && `Consultation ${next.consultationStatus}`,
+    next.reason,
+    next.version && `Version ${next.version}`,
+  ].filter(Boolean);
+  return parts.join(' · ') || row.entityType || '—';
+}
+
 export function AuditScreen() {
   const [page, setPage] = useState(1);
-  const { data } = useLoad(['audit', page], () => api.get('/audit-logs', { page, limit: 20 }), { paged: true });
+  const [action, setAction] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [selected, setSelected] = useState(null);
+  const params = { page, limit: 20, ...(action ? { action } : {}), ...(dateFrom ? { dateFrom } : {}), ...(dateTo ? { dateTo } : {}) };
+  const { data } = useLoad(['audit', page, action, dateFrom, dateTo], () => api.get('/audit-logs', params), { paged: true });
   return (
     <div>
-      <PageHeader title="Audit logs" text="Clinical and operational changes are append-only." />
+      <PageHeader title="Audit logs" text="Who changed what, and when. Only an administrator can open this record. Entries cannot be edited or deleted." />
+      <div className="card mb-4 grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+        <select className="field" value={action} onChange={(event) => { setAction(event.target.value); setPage(1); }}>
+          <option value="">All activities</option>
+          {AUDIT_ACTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+        <TextInput type="date" value={dateFrom} onChange={(event) => { setDateFrom(event.target.value); setPage(1); }} aria-label="From date" />
+        <TextInput type="date" value={dateTo} onChange={(event) => { setDateTo(event.target.value); setPage(1); }} aria-label="To date" />
+        <Button variant="secondary" onClick={() => { setAction(''); setDateFrom(''); setDateTo(''); setPage(1); }}>Clear</Button>
+      </div>
       <div className="card p-4">
-        <DataTable rows={data?.items || []} rowKey={(row) => row._id} columns={[
-          { key: 'createdAt', header: 'When', render: (row) => formatWhen(row.createdAt) },
-          { key: 'userName', header: 'User' },
-          { key: 'userRole', header: 'Role' },
-          { key: 'action', header: 'Action' },
-          { key: 'entityType', header: 'Entity' },
-        ]} />
+        <DataTable
+          rows={data?.items || []}
+          rowKey={(row) => row._id}
+          emptyTitle="No audit entries"
+          emptyText="Create, update, booking, document, and clinical actions will appear here."
+          columns={[
+            { key: 'createdAt', header: 'When', render: (row) => formatWhen(row.createdAt) },
+            { key: 'userName', header: 'Who', render: (row) => `${row.userName} · ${roleLabel(row.userRole)}` },
+            { key: 'action', header: 'Activity', render: (row) => AUDIT_LABELS[row.action] || row.action },
+            { key: 'summary', header: 'What changed', render: (row) => changeSummary(row) },
+            { key: 'details', header: '', render: (row) => <Button size="sm" variant="secondary" onClick={() => setSelected(row)}>Details</Button> },
+          ]}
+        />
         <Pagination meta={data?.meta} onPage={setPage} />
       </div>
+      <Modal open={Boolean(selected)} title={selected ? (AUDIT_LABELS[selected.action] || selected.action) : 'Audit entry'} onClose={() => setSelected(null)}>
+        {selected && (
+          <div className="space-y-4 text-sm">
+            <p className="font-bold text-slate-600">{selected.userName} · {roleLabel(selected.userRole)} · {formatWhen(selected.createdAt)}</p>
+            <p className="font-bold text-ink-900">{changeSummary(selected)}</p>
+            {[['Previous', selected.previousValue], ['New', selected.newValue]].map(([title, value]) => (
+              <div key={title}>
+                <p className="font-bold text-ink-900">{title}</p>
+                {value && typeof value === 'object' && Object.keys(value).length > 0 ? (
+                  <dl className="mt-2 space-y-1">
+                    {Object.entries(value).map(([key, item]) => (
+                      <div key={key} className="grid grid-cols-[8rem_minmax(0,1fr)] gap-2">
+                        <dt className="font-bold text-slate-400">{key}</dt>
+                        <dd className="break-words font-bold text-slate-800">{auditText(item)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : <p className="mt-1 font-bold text-slate-500">No stored value.</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

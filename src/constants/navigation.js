@@ -1,5 +1,5 @@
 import {
-  ClipboardList, FileText, LayoutDashboard, LogOut, ScrollText, Settings, Stethoscope,
+  ClipboardList, FileText, History, LayoutDashboard, LogOut, ScrollText, Settings, Stethoscope,
   UserRound, Users, Building2, ListTree, Database, Shield, BarChart3, UserPlus,
 } from 'lucide-react';
 
@@ -34,6 +34,7 @@ export const adminNav = [
   { to: '/admin/master-data', label: 'Master Data', icon: Database },
   { to: '/admin/policy', label: 'Policy Management', icon: ScrollText },
   { to: '/admin/reports', label: 'Reports & Analytics', icon: BarChart3 },
+  { to: '/admin/audit', label: 'Audit Logs', icon: History },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
   { to: '/admin/profile', label: 'Profile', icon: FileText },
   { label: 'Logout', icon: LogOut, action: 'logout' },
