@@ -1,31 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { useQueryClient } from '@tanstack/react-query';
 import { Bell, X } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { formatWhen } from '../../utils/format.js';
 import { RecordState } from '../common/ui.jsx';
+import { useApiQuery } from '../../services/query.js';
 
 export default function DoctorAlerts() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const role = useSelector((state) => state.auth.user?.role);
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState([]);
-  const [unread, setUnread] = useState(0);
   const isDoctor = role === 'DOCTOR';
+  const alerts = useApiQuery(['alerts', role], isDoctor ? '/doctor/notifications' : '/inbox', undefined, {
+    enabled: Boolean(role),
+    refetchInterval: 20_000,
+  });
+  const items = alerts.data?.data?.items || [];
+  const unread = alerts.data?.data?.unread || 0;
 
-  async function load() {
-    const body = await api.get(isDoctor ? '/doctor/notifications' : '/inbox');
-    setItems(body.data.items || []);
-    setUnread(body.data.unread || 0);
+  function refresh() {
+    return queryClient.invalidateQueries({ queryKey: ['alerts', role] });
   }
-
-  useEffect(() => {
-    if (!role) return undefined;
-    load().catch(() => {});
-    const timer = setInterval(() => load().catch(() => {}), 20000);
-    return () => clearInterval(timer);
-  }, [role]);
 
   function recordPath(item) {
     if (isDoctor) return `/doctor/patients/${item.submissionId}`;
@@ -37,13 +35,12 @@ export default function DoctorAlerts() {
     if (isDoctor) await api.post('/doctor/notifications/read', { ids: [item.id] }).catch(() => {});
     setOpen(false);
     navigate(recordPath(item));
-    load().catch(() => {});
+    refresh();
   }
 
   async function markAll() {
-    const body = await api.post('/doctor/notifications/read', { all: true });
-    setItems(body.data.items || []);
-    setUnread(body.data.unread || 0);
+    await api.post('/doctor/notifications/read', { all: true });
+    refresh();
   }
 
   const title = isDoctor ? 'Assigned patients' : 'Unread records';

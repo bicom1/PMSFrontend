@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api.js';
 import { calculateAge, clinicToday, errorMessage } from '../../utils/format.js';
 import { Button, Field, Modal, PageHeader, Spinner, TextArea, TextInput } from '../../components/common/ui.jsx';
@@ -62,6 +63,7 @@ export default function IntakeForm({ departmentCode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [catalog, setCatalog] = useState({});
   const [doctors, setDoctors] = useState([]);
@@ -92,21 +94,26 @@ export default function IntakeForm({ departmentCode }) {
     let active = true;
     async function load() {
       try {
+        const cached = (key, url, params) => queryClient.fetchQuery({
+          queryKey: key,
+          queryFn: () => api.get(url, params),
+          staleTime: 5 * 60_000,
+        });
         const [departments, policyBody, occupationBody, nationalityBody, cityBody, referralBody] = await Promise.all([
-          api.get('/departments', { active: 'true' }),
-          api.get('/policy/current'),
-          api.get('/master-data', { type: 'OCCUPATION', active: 'true' }),
-          api.get('/master-data', { type: 'NATIONALITY', active: 'true' }),
-          api.get('/master-data', { type: 'CITY', active: 'true' }),
-          api.get('/master-data', { type: 'REFERRAL_SOURCE', active: 'true' }),
+          cached(['departments', 'active'], '/departments', { active: 'true' }),
+          cached(['policy', 'current'], '/policy/current'),
+          cached(['master-data', 'OCCUPATION'], '/master-data', { type: 'OCCUPATION', active: 'true' }),
+          cached(['master-data', 'NATIONALITY'], '/master-data', { type: 'NATIONALITY', active: 'true' }),
+          cached(['master-data', 'CITY'], '/master-data', { type: 'CITY', active: 'true' }),
+          cached(['master-data', 'REFERRAL_SOURCE'], '/master-data', { type: 'REFERRAL_SOURCE', active: 'true' }),
         ]);
         const department = departments.data.find((item) => item.code === departmentCode);
         const [doctorBody, procedureBody, extra] = await Promise.all([
-          api.get('/directory/doctors', { departmentId: String(department._id || department.id), limit: '100' }),
-          api.get('/procedures', { departmentCode, active: 'true' }),
+          cached(['directory-doctors', departmentCode], '/directory/doctors', { departmentId: String(department._id || department.id), limit: '100' }),
+          cached(['procedures', departmentCode], '/procedures', { departmentCode, active: 'true' }),
           departmentCode === 'SKIN'
-            ? api.get('/master-data', { type: 'SKIN_FIELD', active: 'true' })
-            : Promise.all(['ANESTHESIA_TYPE', 'DIET', 'BLOOD_TEST_STATUS', 'SURGERY_LOCATION', 'MRI_STATUS'].map((type) => api.get('/master-data', { type, active: 'true' }))),
+            ? cached(['master-data', 'SKIN_FIELD'], '/master-data', { type: 'SKIN_FIELD', active: 'true' })
+            : Promise.all(['ANESTHESIA_TYPE', 'DIET', 'BLOOD_TEST_STATUS', 'SURGERY_LOCATION', 'MRI_STATUS'].map((type) => cached(['master-data', type], '/master-data', { type, active: 'true' }))),
         ]);
         if (!active) return;
         const surgery = {};
@@ -134,7 +141,7 @@ export default function IntakeForm({ departmentCode }) {
     }
     load();
     return () => { active = false; };
-  }, [departmentCode, setValue, toast]);
+  }, [departmentCode, queryClient, setValue, toast]);
 
   const age = useMemo(() => calculateAge(dob), [dob]);
 

@@ -1,5 +1,6 @@
 import { CalendarCheck, CalendarX, Download, Eye, FileText, FolderOpen, Printer, Stethoscope, StickyNote, Trash2, Upload, UserRoundPen, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api, loadProtectedFile, openProtectedFile, openProtectedPdf } from '../../services/api.js';
 import { bytes, clinicToday, errorMessage, formatWhen } from '../../utils/format.js';
 import { Badge, Button, Field, PageHeader, Spinner, TextArea, TextInput, statusTone, useToast } from '../../components/common/ui.jsx';
@@ -12,6 +13,7 @@ function prettyStatus(status) {
 
 export default function SubmissionRecord({ id }) {
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [record, setRecord] = useState(null);
   const [tab, setTab] = useState('Overview');
   const [doctors, setDoctors] = useState([]);
@@ -69,18 +71,45 @@ export default function SubmissionRecord({ id }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [preview]);
 
-  async function load() {
-    const body = await api.get(`/submissions/${id}`);
+  function applyRecord(body) {
     setRecord(body.data);
     setRemark(body.data.submission.operationalRemark || '');
     setDoctorId(body.data.submission.doctorId);
   }
 
+  async function load() {
+    const body = await queryClient.fetchQuery({
+      queryKey: ['submission', id],
+      queryFn: () => api.get(`/submissions/${id}`),
+      staleTime: 0,
+    });
+    applyRecord(body);
+    queryClient.invalidateQueries({ queryKey: ['submissions'] });
+    queryClient.invalidateQueries({ queryKey: ['patients'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+  }
+
   useEffect(() => {
-    load().catch((error) => toast.error(errorMessage(error)));
-    api.get('/master-data', { type: 'REMARK_CATEGORY', active: 'true' }).then((body) => setCategories(body.data)).catch(() => {});
-    api.get('/directory/doctors', { limit: '100' }).then((body) => setDoctors(body.data)).catch(() => {});
-  }, [id]);
+    let active = true;
+    const cached = queryClient.getQueryData(['submission', id]);
+    if (cached) applyRecord(cached);
+    queryClient.fetchQuery({
+      queryKey: ['submission', id],
+      queryFn: () => api.get(`/submissions/${id}`),
+      staleTime: 15_000,
+    }).then((body) => { if (active) applyRecord(body); }).catch((error) => { if (active) toast.error(errorMessage(error)); });
+    queryClient.fetchQuery({
+      queryKey: ['master-data', 'REMARK_CATEGORY'],
+      queryFn: () => api.get('/master-data', { type: 'REMARK_CATEGORY', active: 'true' }),
+      staleTime: 5 * 60_000,
+    }).then((body) => { if (active) setCategories(body.data); }).catch(() => {});
+    queryClient.fetchQuery({
+      queryKey: ['directory-doctors'],
+      queryFn: () => api.get('/directory/doctors', { limit: '100' }),
+      staleTime: 5 * 60_000,
+    }).then((body) => { if (active) setDoctors(body.data); }).catch(() => {});
+    return () => { active = false; };
+  }, [id, queryClient, toast]);
 
   if (!record) return <Spinner label="Opening record" />;
   const { submission, patient, capabilities } = record;
@@ -279,9 +308,14 @@ export default function SubmissionRecord({ id }) {
 
       {tab === 'Medical history' && (
         <div className="space-y-4">
+          {capabilities.canBook && (
+            <div className="flex justify-end">
+              <Button variant="secondary" onClick={() => openProtectedFile(`/submissions/${id}/history.pdf`, { downloadName: `${record.history.map((group) => group.patientCode).filter(Boolean).join('-') || submission.patientCode}-medical-history.pdf`, mimeType: 'application/pdf' }).catch((error) => toast.error(errorMessage(error)))}><Download size={18} /> Download medical history</Button>
+            </div>
+          )}
           {record.history.map((group) => (
             <section key={`${group.departmentCode}-${group.patientCode}`} className="card p-5">
-              <h2 className="text-xl font-bold">{group.linked ? 'Linked ' : ''}{group.departmentCode} · {group.patientCode}</h2>
+              <h2 className="text-xl font-bold">{group.departmentCode === 'SKIN' ? 'Skin form' : 'Surgery form'} · {group.patientCode}</h2>
               <p className="text-base font-bold text-slate-600">{group.patientName}</p>
               <div className="mt-4 space-y-3">
                 {group.submissions.map((item) => {

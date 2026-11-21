@@ -40,7 +40,7 @@ http.interceptors.response.use(
 );
 
 export const api = {
-  get: (url, params) => http.get(url, { params }).then((res) => res.data),
+  get: (url, params, config = {}) => http.get(url, { params, signal: config.signal }).then((res) => res.data),
   post: (url, body) => http.post(url, body).then((res) => res.data),
   patch: (url, body) => http.patch(url, body).then((res) => res.data),
   delete: (url, body) => http.delete(url, { data: body }).then((res) => res.data),

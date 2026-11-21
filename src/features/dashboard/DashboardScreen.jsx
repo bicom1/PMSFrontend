@@ -1,21 +1,17 @@
-import { useEffect, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar } from 'recharts';
 import { CalendarCheck, CalendarX, ClipboardList, Clock, Stethoscope, UserCheck, UserPlus, Users } from 'lucide-react';
-import { api } from '../../services/api.js';
-import { errorMessage } from '../../utils/format.js';
 import { useNavigate } from 'react-router-dom';
-import { Badge, RecordState, Spinner, StatCard, statusTone, useToast } from '../../components/common/ui.jsx';
+import { Badge, RecordState, Spinner, StatCard, statusTone } from '../../components/common/ui.jsx';
 import DataTable from '../../components/tables/DataTable.jsx';
+import { useApiQuery, useQueryError } from '../../services/query.js';
 
 export default function DashboardScreen({ role }) {
-  const toast = useToast();
   const navigate = useNavigate();
   const recordBase = role === 'ADMIN' ? '/admin/submissions' : role === 'DOCTOR' ? '/doctor/patients' : '/manager/submissions';
-  const [data, setData] = useState(null);
-  useEffect(() => {
-    const path = role === 'ADMIN' ? '/admin/dashboard' : role === 'DOCTOR' ? '/doctor/dashboard' : '/manager/dashboard';
-    api.get(path).then((body) => setData(body.data)).catch((error) => toast.error(errorMessage(error)));
-  }, [role, toast]);
+  const path = role === 'ADMIN' ? '/admin/dashboard' : role === 'DOCTOR' ? '/doctor/dashboard' : '/manager/dashboard';
+  const dashboard = useApiQuery(['dashboard', role], path);
+  useQueryError(dashboard.error);
+  const data = dashboard.data?.data;
   if (!data) return <Spinner label="Loading dashboard" />;
   const stats = role === 'DOCTOR'
     ? [

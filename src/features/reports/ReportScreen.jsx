@@ -1,33 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { api } from '../../services/api.js';
-import { errorMessage } from '../../utils/format.js';
-import { Button, PageHeader, TextInput, useToast } from '../../components/common/ui.jsx';
+import { Button, PageHeader, Spinner, TextInput } from '../../components/common/ui.jsx';
 import DataTable from '../../components/tables/DataTable.jsx';
 import { Pagination } from '../../components/common/ui.jsx';
 import { http } from '../../services/api.js';
+import { useApiQuery, useDebouncedValue, usePagedQuery, useQueryError } from '../../services/query.js';
 
 export default function ReportScreen({ allowClinical = false }) {
-  const toast = useToast();
-  const [query, setQuery] = useState({ page: 1, departmentCode: '', bookingStatus: '', dateFrom: '', dateTo: '', search: '', referredBy: '', remarkCategory: '' });
-  const [report, setReport] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
-  const [referrals, setReferrals] = useState([]);
-  const [categories, setCategories] = useState([]);
-
-  useEffect(() => {
-    api.get('/master-data', { type: 'REFERRAL_SOURCE', active: 'true' }).then((body) => setReferrals(body.data)).catch(() => {});
-    if (allowClinical) api.get('/master-data', { type: 'REMARK_CATEGORY', active: 'true' }).then((body) => setCategories(body.data)).catch(() => {});
-  }, [allowClinical]);
-
-  useEffect(() => {
-    const params = Object.fromEntries(Object.entries(query).filter(([, value]) => value));
-    if (!allowClinical) delete params.remarkCategory;
-    Promise.all([api.get('/reports', params), api.get('/reports/analytics', params)])
-      .then(([list, chart]) => { setReport(list); setAnalytics(chart.data); })
-      .catch((error) => toast.error(errorMessage(error)));
-  }, [query, allowClinical, toast]);
+  const [query, setQuery] = useState({ page: 1, limit: 10, departmentCode: '', bookingStatus: '', dateFrom: '', dateTo: '', search: '', referredBy: '', remarkCategory: '' });
+  const search = useDebouncedValue(query.search);
+  const params = useMemo(() => {
+    const next = Object.fromEntries(Object.entries({ ...query, search }).filter(([, value]) => value));
+    if (!allowClinical) delete next.remarkCategory;
+    return next;
+  }, [query, search, allowClinical]);
+  const reportQuery = usePagedQuery(['reports', params], '/reports', params);
+  const analyticsQuery = usePagedQuery(['reports-analytics', params], '/reports/analytics', params);
+  const referralQuery = useApiQuery(['master-data', 'REFERRAL_SOURCE'], '/master-data', { type: 'REFERRAL_SOURCE', active: 'true' }, { staleTime: 5 * 60_000 });
+  const categoryQuery = useApiQuery(['master-data', 'REMARK_CATEGORY'], '/master-data', { type: 'REMARK_CATEGORY', active: 'true' }, { enabled: allowClinical, staleTime: 5 * 60_000 });
+  useQueryError(reportQuery.error || analyticsQuery.error);
+  const report = reportQuery.data;
+  const analytics = analyticsQuery.data?.data;
+  const referrals = referralQuery.data?.data || [];
+  const categories = categoryQuery.data?.data || [];
 
   async function download(path, filename) {
     const params = Object.fromEntries(Object.entries(query).filter(([, value]) => value && value !== 1 || value === 0));
@@ -100,6 +96,7 @@ export default function ReportScreen({ allowClinical = false }) {
         </div>
       )}
       <div className="card min-w-0 overflow-hidden p-4">
+        {reportQuery.isPending && <Spinner label="Loading report" />}
         <p className="mb-3 text-base font-bold text-slate-600">{report?.meta?.total || 0} matching records</p>
         <DataTable
           rows={report?.items || []}

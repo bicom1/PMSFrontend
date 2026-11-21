@@ -1,35 +1,40 @@
 import { UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useApiQuery } from '../../services/query.js';
 import { api } from '../../services/api.js';
 import { errorMessage, formatWhen, roleLabel } from '../../utils/format.js';
-import { Badge, Button, Field, Modal, PageHeader, TextArea, TextInput, useToast } from '../../components/common/ui.jsx';
+import { Badge, Button, Field, Modal, PageHeader, Pagination, TextArea, TextInput, useToast } from '../../components/common/ui.jsx';
 import PasswordField from '../../pages/auth/PasswordField.jsx';
 import DataTable from '../../components/tables/DataTable.jsx';
 
-function useLoad(loader, deps = []) {
+function useLoad(queryKey, loader, { paged = false } = {}) {
   const toast = useToast();
-  const [data, setData] = useState(null);
-  const [version, setVersion] = useState(0);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey,
+    queryFn: ({ signal }) => loader(signal),
+    placeholderData: paged ? keepPreviousData : undefined,
+  });
   useEffect(() => {
-    let active = true;
-    setData(null);
-    loader().then((body) => { if (active) setData(body); }).catch((error) => { if (active) toast.error(errorMessage(error)); });
-    return () => { active = false; };
-  }, [version, ...deps]);
-  return { data, reload: () => setVersion((value) => value + 1), toast };
+    if (query.error) toast.error(errorMessage(query.error));
+  }, [query.error, toast]);
+  return { data: query.data, reload: () => queryClient.invalidateQueries({ queryKey }), toast };
 }
 
 export function UserAdmin({ role, title }) {
-  const { data, reload, toast } = useLoad(() => api.get('/users', role ? { role, limit: '100' } : { limit: '100' }), [role]);
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [role]);
+  const { data, reload, toast } = useLoad(['users', role || 'all', page], () => api.get('/users', { ...(role ? { role } : {}), page, limit: 10 }), { paged: true });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [departments, setDepartments] = useState([]);
+  const departmentQuery = useApiQuery(['departments'], '/departments', undefined, { staleTime: 5 * 60_000 });
+  const departments = departmentQuery.data?.data || [];
   const [form, setForm] = useState({ username: '', password: '', fullName: '', email: '', phone: '', role: role || 'ADMIN', departments: [] });
   const [fieldErrors, setFieldErrors] = useState({});
   const accountRole = role || form.role;
   const usesContactForm = accountRole === 'ADMIN' || accountRole === 'DOCTOR' || accountRole === 'CLINIC_MANAGER';
   const isDoctor = accountRole === 'DOCTOR';
-  useEffect(() => { api.get('/departments').then((body) => setDepartments(body.data)).catch(() => {}); }, []);
 
   async function create(event) {
     event.preventDefault();
@@ -92,7 +97,7 @@ export function UserAdmin({ role, title }) {
       <PageHeader title={title} text={intro} actions={<Button onClick={() => setOpen(true)}><UserPlus size={18} /> {addLabel}</Button>} />
       <div className="card p-4">
         <DataTable
-          rows={(data?.items || []).filter((row) => !role || row.role === role)}
+          rows={data?.items || []}
           rowKey={(row) => row.id}
           columns={[
             { key: 'fullName', header: 'Name' },
@@ -129,6 +134,7 @@ export function UserAdmin({ role, title }) {
             ) },
           ]}
         />
+        <Pagination meta={data?.meta} onPage={setPage} />
       </div>
       <Modal open={open} title={isDoctor ? 'Add doctor' : accountRole === 'CLINIC_MANAGER' ? 'Add clinic manager' : 'Add administrator'} onClose={() => setOpen(false)}>
         <form className="space-y-3" onSubmit={create}>
@@ -199,7 +205,7 @@ export function UserAdmin({ role, title }) {
 }
 
 export function DepartmentAdmin() {
-  const { data, reload, toast } = useLoad(() => api.get('/departments'));
+  const { data, reload, toast } = useLoad(['departments'], () => api.get('/departments'));
   const [name, setName] = useState('');
   const [selected, setSelected] = useState(null);
   return (
@@ -223,10 +229,10 @@ export function DepartmentAdmin() {
 }
 
 export function ProcedureAdmin() {
-  const { data, reload, toast } = useLoad(() => api.get('/procedures'));
-  const [departments, setDepartments] = useState([]);
+  const { data, reload, toast } = useLoad(['procedures'], () => api.get('/procedures'));
+  const departmentQuery = useApiQuery(['departments'], '/departments', undefined, { staleTime: 5 * 60_000 });
+  const departments = departmentQuery.data?.data || [];
   const [form, setForm] = useState({ name: '', departmentId: '', description: '' });
-  useEffect(() => { api.get('/departments').then((body) => setDepartments(body.data)).catch(() => {}); }, []);
   return (
     <div className="space-y-4">
       <PageHeader title="Procedures" text="Procedure names are provisional until the clinic confirms the real list." />
@@ -256,9 +262,9 @@ export function ProcedureAdmin() {
 }
 
 export function MasterDataAdmin() {
-  const { data: typesBody } = useLoad(() => api.get('/master-data/types'));
+  const { data: typesBody } = useLoad(['master-types'], () => api.get('/master-data/types'));
   const [type, setType] = useState('OCCUPATION');
-  const { data, reload, toast } = useLoad(() => api.get('/master-data', { type }), [type]);
+  const { data, reload, toast } = useLoad(['master-data', type], () => api.get('/master-data', { type }));
   const [label, setLabel] = useState('');
   const types = typesBody?.data || [];
   return (
@@ -296,7 +302,7 @@ export function MasterDataAdmin() {
 }
 
 export function PolicyAdmin() {
-  const { data, reload, toast } = useLoad(() => api.get('/policy/versions'));
+  const { data, reload, toast } = useLoad(['policy-versions'], () => api.get('/policy/versions'));
   const [items, setItems] = useState('');
   return (
     <div className="space-y-4">
@@ -326,7 +332,8 @@ export function PolicyAdmin() {
 }
 
 export function AuditScreen() {
-  const { data } = useLoad(() => api.get('/audit-logs', { limit: '50' }));
+  const [page, setPage] = useState(1);
+  const { data } = useLoad(['audit', page], () => api.get('/audit-logs', { page, limit: 20 }), { paged: true });
   return (
     <div>
       <PageHeader title="Audit logs" text="Clinical and operational changes are append-only." />
@@ -338,13 +345,14 @@ export function AuditScreen() {
           { key: 'action', header: 'Action' },
           { key: 'entityType', header: 'Entity' },
         ]} />
+        <Pagination meta={data?.meta} onPage={setPage} />
       </div>
     </div>
   );
 }
 
 export function SettingsScreen() {
-  const { data, toast } = useLoad(() => api.get('/settings'));
+  const { data, toast } = useLoad(['settings'], () => api.get('/settings'));
   const [form, setForm] = useState(null);
   useEffect(() => { if (data?.data) setForm(data.data); }, [data]);
   if (!form) return null;

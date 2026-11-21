@@ -1,9 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../../services/api.js';
+import { Download } from 'lucide-react';
+import { api, openProtectedFile } from '../../services/api.js';
+import { usePagedQuery, useQueryError, useDebouncedValue } from '../../services/query.js';
+import { useQueryClient } from '@tanstack/react-query';
 import { errorMessage, formatWhen } from '../../utils/format.js';
 import { Badge, Button, PageHeader, RecordState, Spinner, TextInput, statusTone, useToast } from '../../components/common/ui.jsx';
 import { Pagination } from '../../components/common/ui.jsx';
+
+function departmentLabel(code) {
+  if (code === 'SKIN') return 'Skin';
+  if (code === 'SURGERY') return 'Surgery';
+  return code || '—';
+}
+
+function OtherAppointments({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div className="mt-1 space-y-1">
+      {items.map((item) => (
+        <p key={item.id} className="text-sm font-bold text-teal-800">Also {departmentLabel(item.departmentCode)} form · {item.patientCode}</p>
+      ))}
+    </div>
+  );
+}
 
 function factsOf(patient) {
   return [
@@ -38,18 +58,18 @@ function FactGrid({ patient }) {
 
 export default function PatientBrowser({ basePath }) {
   const toast = useToast();
-  const [query, setQuery] = useState({ page: 1, search: '', departmentCode: '' });
-  const [result, setResult] = useState(null);
+  const queryClient = useQueryClient();
+  const [query, setQuery] = useState({ page: 1, limit: 10, search: '', departmentCode: '' });
+  const search = useDebouncedValue(query.search);
+  const params = useMemo(() => Object.fromEntries(Object.entries({ ...query, search }).filter(([, value]) => value)), [query, search]);
+  const list = usePagedQuery(['patients', params], '/patients', params);
+  useQueryError(list.error);
+  const result = list.data;
   const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [visits, setVisits] = useState([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
-
-  useEffect(() => {
-    const params = Object.fromEntries(Object.entries(query).filter(([, value]) => value));
-    api.get('/patients', params).then(setResult).catch((error) => toast.error(errorMessage(error)));
-  }, [query, toast]);
 
   async function openPatient(row) {
     setSelected(row);
@@ -57,13 +77,19 @@ export default function PatientBrowser({ basePath }) {
     setVisits([]);
     setLoadingDetail(true);
     try {
-      const body = await api.get(`/patients/${row.id}`);
+      const body = await queryClient.fetchQuery({
+        queryKey: ['patient', row.id],
+        queryFn: () => api.get(`/patients/${row.id}`),
+        staleTime: 20_000,
+      });
       setDetail(body.data);
-      setResult((current) => (current?.items ? { ...current, items: current.items.map((item) => (item.id === row.id ? { ...item, unread: false } : item)) } : current));
+      queryClient.setQueryData(['patients', params], (current) => (current?.items ? { ...current, items: current.items.map((item) => (item.id === row.id ? { ...item, unread: false } : item)) } : current));
       setHovered((current) => (current?.id === row.id ? { ...current, unread: false } : current));
       setSelected((current) => (current?.id === row.id ? { ...current, unread: false } : current));
-      const submissions = await api.get('/submissions', { patientCode: body.data.patient.patientCode, limit: '50' });
-      setVisits(submissions.items || []);
+      const codes = body.data.appointments?.length ? body.data.appointments : [{ patientCode: body.data.patient.patientCode }];
+      const lists = await Promise.all(codes.map((item) => api.get('/submissions', { patientCode: item.patientCode, limit: '50' })));
+      const wanted = new Set(codes.map((item) => item.patientCode));
+      setVisits(lists.flatMap((list) => list.items || []).filter((visit) => wanted.has(visit.patientCode)));
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -76,7 +102,7 @@ export default function PatientBrowser({ basePath }) {
 
   return (
     <div>
-      <PageHeader title="Patients" text="Tap a row to open the full record. On a large screen, hover for a quick view." />
+      <PageHeader title="Patients" text="The same person in Skin and Surgery keeps both IDs. Each row shows the other department form." />
       <div className="card mb-4 grid gap-3 p-4 sm:grid-cols-2">
         <TextInput placeholder="Name, phone, or ID" value={query.search} onChange={(event) => setQuery({ ...query, page: 1, search: event.target.value })} />
         <select className="field" value={query.departmentCode} onChange={(event) => setQuery({ ...query, page: 1, departmentCode: event.target.value })}>
@@ -87,6 +113,7 @@ export default function PatientBrowser({ basePath }) {
       </div>
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="card p-4">
+          {list.isPending && <Spinner label="Loading patients" />}
           <div className="space-y-3 md:hidden">
             {rows.map((row) => (
               <button key={row.id} type="button" className={`w-full rounded-2xl border border-slate-200 p-4 text-left ${row.unread ? 'bg-rose-50/80' : 'bg-slate-50'}`} onClick={() => openPatient(row)}>
@@ -100,7 +127,7 @@ export default function PatientBrowser({ basePath }) {
                 <dl className="mt-3 space-y-1 text-base">
                   <div className="flex justify-between gap-3"><dt className="text-slate-400">Phone</dt><dd className="font-bold">{row.contactNumber || '—'}</dd></div>
                   <div className="flex justify-between gap-3"><dt className="text-slate-400">CNIC</dt><dd className="font-bold">{row.cnicMasked || '—'}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="text-slate-400">Department</dt><dd className="font-bold">{row.departmentCode || '—'}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-slate-400">Department</dt><dd className="text-right font-bold">{departmentLabel(row.departmentCode)}<OtherAppointments items={row.otherAppointments} /></dd></div>
                 </dl>
               </button>
             ))}
@@ -126,7 +153,7 @@ export default function PatientBrowser({ basePath }) {
                     <td className="px-3 py-3">{row.fullName}</td>
                     <td className="px-3 py-3">{row.contactNumber}</td>
                     <td className="px-3 py-3">{row.cnicMasked}</td>
-                    <td className="px-3 py-3">{row.departmentCode}</td>
+                    <td className="px-3 py-3"><p className="font-bold">{departmentLabel(row.departmentCode)}</p><OtherAppointments items={row.otherAppointments} /></td>
                     <td className="px-3 py-3">{row.gender}</td>
                   </tr>
                 ))}
@@ -141,7 +168,8 @@ export default function PatientBrowser({ basePath }) {
         <aside className="card sticky top-20 hidden p-5 lg:block">
           {preview ? (
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-teal-700">{preview.departmentCode}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-teal-700">{departmentLabel(preview.departmentCode)}</p>
+              <OtherAppointments items={preview.otherAppointments} />
               <h2 className="mt-1 text-2xl font-bold text-ink-900">{preview.fullName}</h2>
               <div className="mt-2"><RecordState unread={preview.unread} /></div>
               <p className="text-base font-bold text-slate-600">{preview.patientCode}</p>
@@ -171,19 +199,43 @@ export default function PatientBrowser({ basePath }) {
             {loadingDetail && <div className="mt-6"><Spinner label="Loading patient" /></div>}
             {detail && (
               <div className="mt-6 space-y-5">
-                {detail.linked && <p className="rounded-xl bg-teal-50 px-4 py-3 text-sm text-teal-900">Linked {detail.linked.departmentCode} record {detail.linked.patientCode}</p>}
+                {(detail.appointments || []).length > 1 && (
+                  <div className="rounded-xl bg-teal-50 px-4 py-3 text-teal-950">
+                    <p className="font-bold">Same person, two department forms</p>
+                    <ul className="mt-2 space-y-1 text-base font-bold">
+                      {detail.appointments.map((item) => <li key={item.id}>{departmentLabel(item.departmentCode)} form · {item.patientCode}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <Button variant="secondary" onClick={() => {
+                  const appointments = detail.appointments?.length ? detail.appointments : [{ patientCode: (detail.patient || selected).patientCode }];
+                  openProtectedFile(`/patients/${(detail.patient || selected).id}/history.pdf`, {
+                    downloadName: `${appointments.map((item) => item.patientCode).join('-')}-medical-history.pdf`,
+                    mimeType: 'application/pdf',
+                  }).catch((error) => toast.error(errorMessage(error)));
+                }}><Download size={18} /> Download medical history</Button>
                 <FactGrid patient={detail.patient} />
                 <section>
-                  <h3 className="text-lg font-bold">Visits</h3>
-                  <div className="mt-3 space-y-2">
-                    {visits.length === 0 && <p className="text-base font-bold text-slate-600">No visits yet.</p>}
-                    {visits.map((visit) => (
-                      <Link key={visit.id} to={`${basePath.replace('/patients', '/submissions')}/${visit.id}`} className="block rounded-xl border border-slate-200 px-4 py-3 transition hover:border-brand-600 hover:bg-teal-50">
-                        <p className="font-bold">{visit.formDate} · {visit.procedure}</p>
-                        <p className="mt-1 text-base font-bold text-slate-600">{visit.doctorName}</p>
-                        <div className="mt-2 flex flex-wrap gap-2"><RecordState unread={visit.unread} /><Badge tone={statusTone(visit.bookingStatus)}>{visit.bookingStatus?.replaceAll('_', ' ')}</Badge></div>
-                      </Link>
-                    ))}
+                  <h3 className="text-lg font-bold">Forms</h3>
+                  <div className="mt-3 space-y-4">
+                    {(detail.appointments?.length ? detail.appointments : [{ id: selected.id, patientCode: (detail.patient || selected).patientCode, departmentCode: (detail.patient || selected).departmentCode }]).map((appointment) => {
+                      const forms = visits.filter((visit) => visit.patientCode === appointment.patientCode);
+                      return (
+                        <div key={appointment.id}>
+                          <p className="text-base font-bold text-teal-800">{departmentLabel(appointment.departmentCode)} form · {appointment.patientCode}</p>
+                          <div className="mt-2 space-y-2">
+                            {forms.length === 0 && <p className="text-base font-bold text-slate-600">No form in this department yet.</p>}
+                            {forms.map((visit) => (
+                              <Link key={visit.id} to={`${basePath.replace('/patients', '/submissions')}/${visit.id}`} className="block rounded-xl border border-slate-200 px-4 py-3 transition hover:border-brand-600 hover:bg-teal-50">
+                                <p className="font-bold">{visit.formDate} · {visit.procedure}</p>
+                                <p className="mt-1 text-base font-bold text-slate-600">{visit.doctorName}</p>
+                                <div className="mt-2 flex flex-wrap gap-2"><RecordState unread={visit.unread} /><Badge tone={statusTone(visit.bookingStatus)}>{visit.bookingStatus?.replaceAll('_', ' ')}</Badge></div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
               </div>
