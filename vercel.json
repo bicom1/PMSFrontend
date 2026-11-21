@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://pmsbackend-j8nf.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
