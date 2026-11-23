@@ -2,7 +2,7 @@ import { Download, Eye, FileText, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { api, loadProtectedFile, openProtectedFile } from '../../services/api.js';
 import { bytes, errorMessage, formatWhen } from '../../utils/format.js';
-import { Badge, Button, Field, TextInput, useToast } from '../common/ui.jsx';
+import { Badge, Button, Field, TextInput, useToast } from '../../components/common/ui.jsx';
 
 export const DOCUMENT_KINDS = [
   { value: 'LAB', label: 'Lab report' },
