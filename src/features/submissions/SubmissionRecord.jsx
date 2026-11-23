@@ -1,9 +1,10 @@
-import { CalendarCheck, CalendarX, Download, Eye, FileText, FolderOpen, Printer, Stethoscope, StickyNote, Trash2, Upload, UserRoundPen, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { CalendarCheck, CalendarX, Download, FileText, Printer, Stethoscope, StickyNote, UserRoundPen } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, loadProtectedFile, openProtectedFile, openProtectedPdf } from '../../services/api.js';
-import { bytes, clinicToday, errorMessage, formatWhen } from '../../utils/format.js';
+import { api, openProtectedFile, openProtectedPdf } from '../../services/api.js';
+import { clinicToday, errorMessage, formatWhen } from '../../utils/format.js';
 import { Badge, Button, Field, PageHeader, Spinner, TextArea, TextInput, statusTone, useToast } from '../../components/common/ui.jsx';
+import DocumentPanel from '../documents/DocumentPanel.jsx';
 
 const tabs = ['Overview', 'Patient profile', 'Medical history', 'Documents', 'Prescriptions', 'Clinical remarks'];
 
@@ -27,49 +28,7 @@ export default function SubmissionRecord({ id }) {
   const [rxDate, setRxDate] = useState(clinicToday);
   const [editingRx, setEditingRx] = useState(null);
   const [editingRemark, setEditingRemark] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [historyId, setHistoryId] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const fileInput = useRef(null);
-  const previewUrl = useRef(null);
-  const viewRequest = useRef(0);
-
-  function closePreview() {
-    viewRequest.current += 1;
-    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
-    previewUrl.current = null;
-    setPreview(null);
-  }
-
-  async function viewDocument(file) {
-    const request = ++viewRequest.current;
-    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
-    previewUrl.current = null;
-    setPreview({ name: file.originalFilename, loading: true });
-    try {
-      const loaded = await loadProtectedFile(`/documents/${file.id}/view`, { mimeType: file.mimeType, filename: file.originalFilename });
-      if (request !== viewRequest.current) {
-        URL.revokeObjectURL(loaded.url);
-        return;
-      }
-      previewUrl.current = loaded.url;
-      setPreview({ name: file.originalFilename, url: loaded.url, type: loaded.type });
-    } catch (error) {
-      if (request !== viewRequest.current) return;
-      setPreview(null);
-      toast.error(errorMessage(error));
-    }
-  }
-
-  useEffect(() => () => {
-    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
-  }, []);
-  useEffect(() => {
-    if (!preview) return undefined;
-    const onKey = (event) => { if (event.key === 'Escape') closePreview(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [preview]);
 
   function applyRecord(body) {
     setRecord(body.data);
@@ -140,24 +99,6 @@ export default function SubmissionRecord({ id }) {
       toast.success('Operational remark saved');
       await load();
     } catch (error) { toast.error(errorMessage(error)); }
-  }
-
-  async function uploadSelected(fileList) {
-    const files = [...(fileList || [])];
-    if (!files.length) return;
-    setUploading(true);
-    const form = new FormData();
-    files.forEach((file) => form.append('files', file));
-    try {
-      await api.post(`/submissions/${id}/documents`, form);
-      toast.success(files.length === 1 ? 'File uploaded' : `${files.length} files uploaded`);
-      await load();
-    } catch (error) {
-      toast.error(errorMessage(error));
-    } finally {
-      setUploading(false);
-      if (fileInput.current) fileInput.current.value = '';
-    }
   }
 
   async function savePrescription(event) {
@@ -369,57 +310,12 @@ export default function SubmissionRecord({ id }) {
       )}
 
       {tab === 'Documents' && (
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100 text-brand-700"><FolderOpen size={20} /></span>
-              <div>
-                <h2 className="text-xl font-bold text-ink-900">Documents</h2>
-                <p className="text-base font-bold text-slate-600">{record.documents.filter((item) => !item.isDeleted).length} file{record.documents.filter((item) => !item.isDeleted).length === 1 ? '' : 's'} on this visit</p>
-              </div>
-            </div>
-            {capabilities.canUpload && <Button disabled={uploading} onClick={() => fileInput.current?.click()}><Upload size={18} /> {uploading ? 'Uploading…' : 'Upload files'}</Button>}
-          </div>
-          {capabilities.canUpload && (
-            <input
-              ref={fileInput}
-              type="file"
-              multiple
-              style={{ display: 'none' }}
-              onChange={(event) => uploadSelected(event.target.files)}
-            />
-          )}
-          {uploading && <p className="border-b border-slate-100 px-5 py-3 text-base font-bold text-slate-600">Uploading the selected file…</p>}
-          {record.documents.length === 0 ? (
-            <div className="px-5 py-12 text-center">
-              <FolderOpen className="mx-auto text-slate-300" size={36} />
-              <p className="mt-3 text-base font-bold text-ink-900">No documents yet</p>
-              <p className="mx-auto mt-1 max-w-sm text-base font-bold text-slate-600">Upload labs, scans, or consent forms. Each file can be opened or downloaded.</p>
-              {capabilities.canUpload && <Button className="mt-4" onClick={() => fileInput.current?.click()}><Upload size={18} /> Upload files</Button>}
-            </div>
-          ) : (
-            <ul>
-              {record.documents.map((document) => (
-                <li key={document.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 last:border-b-0">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600"><FileText size={18} /></span>
-                    <div className="min-w-0">
-                      <p className="truncate font-bold text-ink-900">{document.originalFilename} {document.isDeleted && <Badge tone="rose">Deleted</Badge>}</p>
-                      <p className="text-base font-bold text-slate-600">{bytes(document.size)} · {document.uploadedByName} · {formatWhen(document.createdAt)}</p>
-                    </div>
-                  </div>
-                  {!document.isDeleted && (
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => viewDocument(document)}><Eye size={16} /> View</Button>
-                      <Button size="sm" onClick={() => openProtectedFile(`/documents/${document.id}/download`, { downloadName: document.originalFilename, mimeType: document.mimeType }).catch((error) => toast.error(errorMessage(error)))}><Download size={16} /> Download</Button>
-                      {capabilities.canUpload && <Button size="sm" variant="danger" onClick={async () => { await api.delete(`/documents/${document.id}`, { reason: 'Removed by user' }); await load(); }}><Trash2 size={16} /> Delete</Button>}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <DocumentPanel
+          documents={record.documents}
+          canUpload={capabilities.canUpload}
+          submissionId={id}
+          onChanged={load}
+        />
       )}
 
       {tab === 'Prescriptions' && (
@@ -495,31 +391,6 @@ export default function SubmissionRecord({ id }) {
             </article>
           ))}
         </section>
-      )}
-      {preview && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-950/70 p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={preview.name}>
-          <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[min(92vh,900px)] sm:max-w-6xl sm:rounded-2xl">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-              <p className="min-w-0 truncate text-lg font-bold text-ink-900">{preview.name}</p>
-              <button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-ink-900" onClick={closePreview} aria-label="Close document"><X size={22} /></button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-auto bg-slate-100">
-              {preview.loading && <p className="p-6 text-base font-bold text-slate-600">Opening document…</p>}
-              {!preview.loading && preview.type?.startsWith('image/') && <img src={preview.url} alt={preview.name} className="mx-auto max-h-full max-w-full object-contain" />}
-              {!preview.loading && preview.type === 'application/pdf' && <iframe title={preview.name} src={preview.url} className="h-full min-h-[70vh] w-full border-0 bg-white" />}
-              {!preview.loading && preview.type !== 'application/pdf' && (preview.type?.startsWith('text/') || preview.type === 'application/json') && <iframe title={preview.name} src={preview.url} sandbox="" className="h-full min-h-[70vh] w-full border-0 bg-white" />}
-              {!preview.loading && preview.type?.startsWith('video/') && <video src={preview.url} controls className="mx-auto max-h-full max-w-full" />}
-              {!preview.loading && preview.type?.startsWith('audio/') && <audio src={preview.url} controls className="m-6 w-[min(100%-3rem,32rem)]" />}
-              {!preview.loading && preview.url && !preview.type?.startsWith('image/') && preview.type !== 'application/pdf' && !preview.type?.startsWith('text/') && preview.type !== 'application/json' && !preview.type?.startsWith('video/') && !preview.type?.startsWith('audio/') && (
-                <div className="mx-auto max-w-md px-6 py-16 text-center">
-                  <FileText className="mx-auto text-slate-300" size={40} />
-                  <p className="mt-3 text-lg font-bold text-ink-900">This file cannot be shown in the page</p>
-                  <p className="mt-2 text-base font-bold text-slate-600">PDF, images, and text open here. Use Download for Word, Excel, and other office files.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
