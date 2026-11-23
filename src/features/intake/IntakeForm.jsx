@@ -7,28 +7,41 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api.js';
 import { calculateAge, clinicToday, errorMessage } from '../../utils/format.js';
+import { cnicError, formatCnicInput, formatPhoneInput, nameError, phoneError } from '../../utils/identity.js';
 import { Button, Field, Modal, PageHeader, Spinner, TextArea, TextInput } from '../../components/common/ui.jsx';
 import SearchableSelect from '../../components/common/SearchableSelect.jsx';
 import { useToast } from '../../components/common/ui.jsx';
 
 const schema = z.object({
-  fullName: z.string().trim().min(2, 'Patient name is required'),
-  contactNumber: z.string().trim().min(7, 'Contact number is required'),
-  cnic: z.string().trim().min(13, 'CNIC is required'),
-  dateOfBirth: z.string().min(10, 'Date of birth is required'),
+  fullName: z.string().trim().superRefine((value, ctx) => {
+    const message = nameError(value);
+    if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+  }),
+  contactNumber: z.string().trim().superRefine((value, ctx) => {
+    const message = phoneError(value);
+    if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+  }),
+  cnic: z.string().trim().superRefine((value, ctx) => {
+    const message = cnicError(value);
+    if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+  }),
+  dateOfBirth: z.string().min(10, 'Date of birth is required').refine((value) => value <= clinicToday(), 'Date of birth cannot be in the future').refine((value) => {
+    const age = calculateAge(value);
+    return age !== '' && age <= 120;
+  }, 'Enter a date of birth within the last 120 years'),
   gender: z.string().min(1, 'Select a gender'),
   nationality: z.string().min(1, 'Nationality is required'),
   occupation: z.string().min(1, 'Occupation is required'),
   occupationOther: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   address: z.string().trim().min(3, 'Address is required'),
-  weightKg: z.coerce.number({ invalid_type_error: 'Enter weight in kg' }).gt(0).max(400),
-  heightCm: z.coerce.number({ invalid_type_error: 'Enter height in cm' }).gt(30).max(250),
+  weightKg: z.coerce.number({ invalid_type_error: 'Enter weight in kg' }).gt(0, 'Weight must be above 0 kg').max(400, 'Weight cannot be above 400 kg'),
+  heightCm: z.coerce.number({ invalid_type_error: 'Enter height in cm' }).gt(30, 'Height must be above 30 cm').max(250, 'Height cannot be above 250 cm'),
   referredBy: z.string().min(1, 'Referral source is required'),
   referredByOther: z.string().optional(),
   doctorId: z.string().min(1, 'Select a doctor'),
   procedureId: z.string().min(1, 'Select a procedure'),
-  formDate: z.string().min(10, 'Form date is required'),
+  formDate: z.string().min(10, 'Form date is required').refine((value) => value <= clinicToday(), 'Form date cannot be in the future'),
   policyAcknowledged: z.literal(true, { errorMap: () => ({ message: 'Policy acknowledgement is required' }) }),
   anesthesiaType: z.string().optional(),
   diet: z.string().optional(),
@@ -89,6 +102,9 @@ export default function IntakeForm({ departmentCode }) {
   const dob = watch('dateOfBirth');
   const occupation = watch('occupation');
   const referredBy = watch('referredBy');
+  const watchedName = watch('fullName');
+  const watchedPhone = watch('contactNumber');
+  const watchedCnic = watch('cnic');
 
   useEffect(() => {
     let active = true;
@@ -150,8 +166,15 @@ export default function IntakeForm({ departmentCode }) {
     setValue('formDate', form.getValues('formDate') || clinicToday());
   }, [loading, form, setValue]);
 
+  function fillKnownDetails(record) {
+    ['dateOfBirth', 'gender', 'nationality', 'occupation', 'occupationOther', 'city', 'address'].forEach((key) => {
+      if (!form.getValues(key) && record?.[key]) setValue(key, record[key], { shouldValidate: true });
+    });
+  }
+
   async function checkIdentity() {
     const values = form.getValues();
+    if (nameError(values.fullName) || phoneError(values.contactNumber) || cnicError(values.cnic)) return;
     try {
       const body = await api.post('/patients/identify', {
         departmentCode,
@@ -169,19 +192,30 @@ export default function IntakeForm({ departmentCode }) {
         setMode('attach');
         setExistingId(body.data.cnicConflict.id);
         setCorrecting(true);
-        setConflictOpen(true);
+        if (!correcting) setConflictOpen(true);
       } else if (body.data.status === 'PHONE_CONFLICT') {
         setMode('new');
         setExistingId('');
-        setConflictOpen(true);
+        if (!ackConflict) setConflictOpen(true);
       } else {
         setMode('new');
         setExistingId('');
+      }
+      if (body.data.crossDepartmentCandidate?.canAutoLink) {
+        setLinkIdentity(true);
+        fillKnownDetails(body.data.crossDepartmentCandidate);
       }
     } catch (error) {
       toast.error(errorMessage(error));
     }
   }
+
+  useEffect(() => {
+    if (loading) return;
+    if (nameError(watchedName) || phoneError(watchedPhone) || cnicError(watchedCnic)) return undefined;
+    const timer = setTimeout(() => { checkIdentity(); }, 500);
+    return () => clearTimeout(timer);
+  }, [watchedName, watchedPhone, watchedCnic, loading, departmentCode]);
 
   function applyMatch(match) {
     ['fullName', 'contactNumber', 'cnic', 'dateOfBirth', 'gender', 'nationality', 'occupation', 'occupationOther', 'city', 'address'].forEach((key) => {
@@ -288,13 +322,26 @@ export default function IntakeForm({ departmentCode }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <PageHeader title={departmentCode === 'SKIN' ? 'Skin department form' : 'Surgery department form'} text="Register a visit. A returning patient keeps the same department ID." />
+      <PageHeader title={departmentCode === 'SKIN' ? 'Skin department form' : 'Surgery department form'} text="Register a visit. The same name, CNIC, and mobile number stay one person, including a visit in the other department." />
       <section className="card space-y-4 p-5">
         <h2 className="text-xl font-bold text-ink-900">Identification</h2>
+        <ul className="list-disc space-y-1 pl-5 text-sm font-bold text-slate-600">
+          <li>Name uses letters only.</li>
+          <li>Phone number is 7 to 15 digits. A local number such as 0300 1234567 and an international number such as +44 7700 900123 are both accepted.</li>
+          <li>Identity number is a CNIC or a passport. A CNIC is 13 digits, for example 12345-1234567-1. A passport can include letters.</li>
+          <li>The same name, CNIC, and mobile number in Skin and Surgery are saved as one person with two appointments.</li>
+          <li>A shared mobile number with a different CNIC is a different person.</li>
+        </ul>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Contact number" error={errors.contactNumber?.message}><TextInput {...register('contactNumber')} /></Field>
-          <Field label="Patient name" error={errors.fullName?.message}><TextInput {...register('fullName')} /></Field>
-          <Field label="CNIC" error={errors.cnic?.message}><TextInput placeholder="12345-1234567-1" {...register('cnic')} /></Field>
+          <Field label="Contact number" error={errors.contactNumber?.message}>
+            <TextInput inputMode="tel" autoComplete="tel" placeholder="0300 1234567 or +44 7700 900123" value={watchedPhone || ''} onChange={(event) => setValue('contactNumber', formatPhoneInput(event.target.value), { shouldValidate: true })} />
+          </Field>
+          <Field label="Patient name" error={errors.fullName?.message}>
+            <TextInput autoComplete="name" placeholder="Patient name" value={watchedName || ''} onChange={(event) => setValue('fullName', event.target.value, { shouldValidate: true })} />
+          </Field>
+          <Field label="CNIC" error={errors.cnic?.message}>
+            <TextInput autoComplete="off" placeholder="12345-1234567-1 or passport" value={watchedCnic || ''} onChange={(event) => setValue('cnic', formatCnicInput(event.target.value), { shouldValidate: true })} />
+          </Field>
         </div>
         <Button variant="secondary" onClick={checkIdentity}>Check records</Button>
         {identity?.status === 'NEW' && !identity.crossDepartmentCandidate && (
@@ -315,8 +362,8 @@ export default function IntakeForm({ departmentCode }) {
           <label className="flex items-start gap-2 rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-950">
             <input type="checkbox" className="mt-1" checked={linkIdentity} onChange={(event) => setLinkIdentity(event.target.checked)} disabled={!identity.crossDepartmentCandidate.canAutoLink} />
             <span>
-              Verified {identity.crossDepartmentCandidate.departmentCode} record {identity.crossDepartmentCandidate.patientCode} belongs to the same person.
-              {identity.crossDepartmentCandidate.canAutoLink ? ' Link the records.' : ' Names differ, so an administrator must link them.'}
+              Same person. {identity.crossDepartmentCandidate.departmentCode} appointment {identity.crossDepartmentCandidate.patientCode} uses this name, CNIC, and mobile number.
+              {identity.crossDepartmentCandidate.canAutoLink ? ' Both appointments stay on one person. The saved details were copied into this form.' : ' The name or mobile number differs, so an administrator must link them.'}
             </span>
           </label>
         )}
@@ -324,7 +371,7 @@ export default function IntakeForm({ departmentCode }) {
 
       <section className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
         <h2 className="text-xl font-bold text-ink-900 sm:col-span-2">Personal details</h2>
-        <Field label="Date of birth" error={errors.dateOfBirth?.message}><TextInput type="date" {...register('dateOfBirth')} /></Field>
+        <Field label="Date of birth" error={errors.dateOfBirth?.message}><TextInput type="date" max={clinicToday()} {...register('dateOfBirth')} /></Field>
         <Field label="Age"><TextInput value={age} readOnly /></Field>
         <SearchableSelect label="Gender" options={genders} value={watch('gender')} onChange={(value) => setValue('gender', value, { shouldValidate: true })} error={errors.gender?.message} placeholder="Select gender" />
         <SearchableSelect label="Nationality" allowCustom options={optionsOf(catalog.nationalities)} value={watch('nationality')} onChange={(value) => setValue('nationality', value, { shouldValidate: true })} error={errors.nationality?.message} placeholder="Select or type nationality" />
@@ -342,7 +389,7 @@ export default function IntakeForm({ departmentCode }) {
         <SearchableSelect label="Procedure" options={procedures.map((procedure) => ({ value: String(procedure._id || procedure.id), label: procedure.name }))} value={watch('procedureId')} onChange={(value) => setValue('procedureId', value, { shouldValidate: true })} error={errors.procedureId?.message} placeholder="Select procedure" />
         <SearchableSelect label="Referred by" allowCustom options={optionsOf(catalog.referrals)} value={referredBy} onChange={(value) => setValue('referredBy', value, { shouldValidate: true })} error={errors.referredBy?.message} placeholder="Select or type referral" />
         {catalog.referrals?.find((item) => item.value === referredBy)?.allowOther && <Field label="Other referral"><TextInput {...register('referredByOther')} /></Field>}
-        <Field label="Form date" error={errors.formDate?.message}><TextInput type="date" {...register('formDate')} /></Field>
+        <Field label="Form date" error={errors.formDate?.message}><TextInput type="date" max={clinicToday()} {...register('formDate')} /></Field>
       </section>
 
       {departmentCode === 'SKIN' ? (
