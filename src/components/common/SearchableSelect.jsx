@@ -75,7 +75,7 @@ export default function SearchableSelect({
             </div>
             <input
               className="w-full border-b border-slate-100 px-3 py-3 text-base outline-none"
-              placeholder={allowCustom ? 'Type to search or add' : 'Type to filter'}
+              placeholder="Search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {

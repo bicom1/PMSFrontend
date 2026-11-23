@@ -325,22 +325,15 @@ export default function IntakeForm({ departmentCode }) {
       <PageHeader title={departmentCode === 'SKIN' ? 'Skin department form' : 'Surgery department form'} text="Register a visit. The same name, CNIC, and mobile number stay one person, including a visit in the other department." />
       <section className="card space-y-4 p-5">
         <h2 className="text-xl font-bold text-ink-900">Identification</h2>
-        <ul className="list-disc space-y-1 pl-5 text-sm font-bold text-slate-600">
-          <li>Name uses letters only.</li>
-          <li>Phone number is 7 to 15 digits. A local number such as 0300 1234567 and an international number such as +44 7700 900123 are both accepted.</li>
-          <li>Identity number is a CNIC or a passport. A CNIC is 13 digits, for example 12345-1234567-1. A passport can include letters.</li>
-          <li>The same name, CNIC, and mobile number in Skin and Surgery are saved as one person with two appointments.</li>
-          <li>A shared mobile number with a different CNIC is a different person.</li>
-        </ul>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Contact number" error={errors.contactNumber?.message}>
-            <TextInput inputMode="tel" autoComplete="tel" placeholder="0300 1234567 or +44 7700 900123" value={watchedPhone || ''} onChange={(event) => setValue('contactNumber', formatPhoneInput(event.target.value), { shouldValidate: true })} />
+            <TextInput inputMode="tel" autoComplete="tel" placeholder="0300 1234567" value={watchedPhone || ''} onChange={(event) => setValue('contactNumber', formatPhoneInput(event.target.value), { shouldValidate: true })} />
           </Field>
           <Field label="Patient name" error={errors.fullName?.message}>
-            <TextInput autoComplete="name" placeholder="Patient name" value={watchedName || ''} onChange={(event) => setValue('fullName', event.target.value, { shouldValidate: true })} />
+            <TextInput autoComplete="name" placeholder="Full name" value={watchedName || ''} onChange={(event) => setValue('fullName', event.target.value, { shouldValidate: true })} />
           </Field>
           <Field label="CNIC" error={errors.cnic?.message}>
-            <TextInput autoComplete="off" placeholder="12345-1234567-1 or passport" value={watchedCnic || ''} onChange={(event) => setValue('cnic', formatCnicInput(event.target.value), { shouldValidate: true })} />
+            <TextInput autoComplete="off" placeholder="12345-1234567-1" value={watchedCnic || ''} onChange={(event) => setValue('cnic', formatCnicInput(event.target.value), { shouldValidate: true })} />
           </Field>
         </div>
         <Button variant="secondary" onClick={checkIdentity}>Check records</Button>
@@ -373,21 +366,21 @@ export default function IntakeForm({ departmentCode }) {
         <h2 className="text-xl font-bold text-ink-900 sm:col-span-2">Personal details</h2>
         <Field label="Date of birth" error={errors.dateOfBirth?.message}><TextInput type="date" max={clinicToday()} {...register('dateOfBirth')} /></Field>
         <Field label="Age"><TextInput value={age} readOnly /></Field>
-        <SearchableSelect label="Gender" options={genders} value={watch('gender')} onChange={(value) => setValue('gender', value, { shouldValidate: true })} error={errors.gender?.message} placeholder="Select gender" />
-        <SearchableSelect label="Nationality" allowCustom options={optionsOf(catalog.nationalities)} value={watch('nationality')} onChange={(value) => setValue('nationality', value, { shouldValidate: true })} error={errors.nationality?.message} placeholder="Select or type nationality" />
-        <SearchableSelect label="Occupation" allowCustom options={optionsOf(catalog.occupations)} value={occupation} onChange={(value) => setValue('occupation', value, { shouldValidate: true })} error={errors.occupation?.message} placeholder="Select or type occupation" />
+        <SearchableSelect label="Gender" options={genders} value={watch('gender')} onChange={(value) => setValue('gender', value, { shouldValidate: true })} error={errors.gender?.message} placeholder="Gender" />
+        <SearchableSelect label="Nationality" allowCustom options={optionsOf(catalog.nationalities)} value={watch('nationality')} onChange={(value) => setValue('nationality', value, { shouldValidate: true })} error={errors.nationality?.message} placeholder="Nationality" />
+        <SearchableSelect label="Occupation" allowCustom options={optionsOf(catalog.occupations)} value={occupation} onChange={(value) => setValue('occupation', value, { shouldValidate: true })} error={errors.occupation?.message} placeholder="Occupation" />
         {catalog.occupations?.find((item) => item.value === occupation)?.allowOther && <Field label="Other occupation"><TextInput {...register('occupationOther')} /></Field>}
-        <SearchableSelect label="Weight (kg)" allowCustom customKind="number" customExclusiveMin={0} customMax={400} unit="kg" options={weights} value={watch('weightKg') ? String(watch('weightKg')) : ''} onChange={(value) => setValue('weightKg', value, { shouldValidate: true })} error={errors.weightKg?.message} placeholder="Select or type weight" />
-        <SearchableSelect label="Height (cm)" allowCustom customKind="number" customExclusiveMin={30} customMax={250} unit="cm" options={heights} value={watch('heightCm') ? String(watch('heightCm')) : ''} onChange={(value) => setValue('heightCm', value, { shouldValidate: true })} error={errors.heightCm?.message} placeholder="Select or type height" />
-        <SearchableSelect label="City" allowCustom options={optionsOf(catalog.cities)} value={watch('city')} onChange={(value) => setValue('city', value, { shouldValidate: true })} error={errors.city?.message} placeholder="Select or type city" />
+        <SearchableSelect label="Weight (kg)" allowCustom customKind="number" customExclusiveMin={0} customMax={400} unit="kg" options={weights} value={watch('weightKg') ? String(watch('weightKg')) : ''} onChange={(value) => setValue('weightKg', value, { shouldValidate: true })} error={errors.weightKg?.message} placeholder="Weight" />
+        <SearchableSelect label="Height (cm)" allowCustom customKind="number" customExclusiveMin={30} customMax={250} unit="cm" options={heights} value={watch('heightCm') ? String(watch('heightCm')) : ''} onChange={(value) => setValue('heightCm', value, { shouldValidate: true })} error={errors.heightCm?.message} placeholder="Height" />
+        <SearchableSelect label="City" allowCustom options={optionsOf(catalog.cities)} value={watch('city')} onChange={(value) => setValue('city', value, { shouldValidate: true })} error={errors.city?.message} placeholder="City" />
         <Field label="Address" error={errors.address?.message}><TextInput {...register('address')} /></Field>
       </section>
 
       <section className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
         <h2 className="text-xl font-bold text-ink-900 sm:col-span-2">Visit</h2>
-        <SearchableSelect label="Doctor" options={doctors.map((doctor) => ({ value: String(doctor.id || doctor._id), label: doctor.fullName }))} value={watch('doctorId')} onChange={(value) => setValue('doctorId', value, { shouldValidate: true })} error={errors.doctorId?.message} placeholder="Select doctor" />
-        <SearchableSelect label="Procedure" options={procedures.map((procedure) => ({ value: String(procedure._id || procedure.id), label: procedure.name }))} value={watch('procedureId')} onChange={(value) => setValue('procedureId', value, { shouldValidate: true })} error={errors.procedureId?.message} placeholder="Select procedure" />
-        <SearchableSelect label="Referred by" allowCustom options={optionsOf(catalog.referrals)} value={referredBy} onChange={(value) => setValue('referredBy', value, { shouldValidate: true })} error={errors.referredBy?.message} placeholder="Select or type referral" />
+        <SearchableSelect label="Doctor" options={doctors.map((doctor) => ({ value: String(doctor.id || doctor._id), label: doctor.fullName }))} value={watch('doctorId')} onChange={(value) => setValue('doctorId', value, { shouldValidate: true })} error={errors.doctorId?.message} placeholder="Doctor" />
+        <SearchableSelect label="Procedure" options={procedures.map((procedure) => ({ value: String(procedure._id || procedure.id), label: procedure.name }))} value={watch('procedureId')} onChange={(value) => setValue('procedureId', value, { shouldValidate: true })} error={errors.procedureId?.message} placeholder="Procedure" />
+        <SearchableSelect label="Referred by" allowCustom options={optionsOf(catalog.referrals)} value={referredBy} onChange={(value) => setValue('referredBy', value, { shouldValidate: true })} error={errors.referredBy?.message} placeholder="Referral" />
         {catalog.referrals?.find((item) => item.value === referredBy)?.allowOther && <Field label="Other referral"><TextInput {...register('referredByOther')} /></Field>}
         <Field label="Form date" error={errors.formDate?.message}><TextInput type="date" max={clinicToday()} {...register('formDate')} /></Field>
       </section>
@@ -408,13 +401,13 @@ export default function IntakeForm({ departmentCode }) {
       ) : (
         <section className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
           <h2 className="text-xl font-bold text-ink-900 sm:col-span-2">Surgery details</h2>
-          <SearchableSelect label="Anesthesia type" allowCustom options={optionsOf(catalog.surgery?.anesthesia)} value={watch('anesthesiaType')} onChange={(value) => setValue('anesthesiaType', value)} placeholder="Select or type anesthesia" />
-          <SearchableSelect label="Diet" allowCustom options={optionsOf(catalog.surgery?.diet)} value={watch('diet')} onChange={(value) => setValue('diet', value)} placeholder="Select or type diet" />
-          <SearchableSelect label="Blood test status" allowCustom options={optionsOf(catalog.surgery?.blood)} value={watch('bloodTestStatus')} onChange={(value) => setValue('bloodTestStatus', value)} placeholder="Select or type blood test status" />
-          <SearchableSelect label="Location of surgery" allowCustom options={optionsOf(catalog.surgery?.location)} value={watch('locationOfSurgery')} onChange={(value) => setValue('locationOfSurgery', value)} placeholder="Select or type location" />
-          <SearchableSelect label="MRI" allowCustom options={optionsOf(catalog.surgery?.mri)} value={watch('mri')} onChange={(value) => setValue('mri', value)} placeholder="Select or type MRI status" />
+          <SearchableSelect label="Anesthesia type" allowCustom options={optionsOf(catalog.surgery?.anesthesia)} value={watch('anesthesiaType')} onChange={(value) => setValue('anesthesiaType', value)} placeholder="Anesthesia" />
+          <SearchableSelect label="Diet" allowCustom options={optionsOf(catalog.surgery?.diet)} value={watch('diet')} onChange={(value) => setValue('diet', value)} placeholder="Diet" />
+          <SearchableSelect label="Blood test status" allowCustom options={optionsOf(catalog.surgery?.blood)} value={watch('bloodTestStatus')} onChange={(value) => setValue('bloodTestStatus', value)} placeholder="Blood test" />
+          <SearchableSelect label="Location of surgery" allowCustom options={optionsOf(catalog.surgery?.location)} value={watch('locationOfSurgery')} onChange={(value) => setValue('locationOfSurgery', value)} placeholder="Location" />
+          <SearchableSelect label="MRI" allowCustom options={optionsOf(catalog.surgery?.mri)} value={watch('mri')} onChange={(value) => setValue('mri', value)} placeholder="MRI" />
           <Field label="Surgery cost"><TextInput type="number" min="0" {...register('surgeryCost')} /></Field>
-          <SearchableSelect label="Follow-up sessions" allowCustom customKind="number" customInteger customMin={0} customMax={500} options={followUpOptions} value={watch('followUpSessions') ? String(watch('followUpSessions')) : ''} onChange={(value) => setValue('followUpSessions', value)} placeholder="Select or type sessions" />
+          <SearchableSelect label="Follow-up sessions" allowCustom customKind="number" customInteger customMin={0} customMax={500} options={followUpOptions} value={watch('followUpSessions') ? String(watch('followUpSessions')) : ''} onChange={(value) => setValue('followUpSessions', value)} placeholder="Sessions" />
           <Field label="Any other"><TextArea {...register('anyOther')} /></Field>
         </section>
       )}
