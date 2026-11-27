@@ -23,6 +23,7 @@ function useLoad(queryKey, loader, { paged = false } = {}) {
 }
 
 export function UserAdmin({ role, title }) {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   useEffect(() => { setPage(1); }, [role]);
   const { data, reload, toast } = useLoad(['users', role || 'all', page], () => api.get('/users', { ...(role ? { role } : {}), page, limit: 10 }), { paged: true });
@@ -35,6 +36,11 @@ export function UserAdmin({ role, title }) {
   const accountRole = role || form.role;
   const usesContactForm = accountRole === 'ADMIN' || accountRole === 'DOCTOR' || accountRole === 'CLINIC_MANAGER';
   const isDoctor = accountRole === 'DOCTOR';
+
+  function refreshDoctorLists() {
+    queryClient.invalidateQueries({ queryKey: ['directory-doctors'] });
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+  }
 
   async function create(event) {
     event.preventDefault();
@@ -67,6 +73,7 @@ export function UserAdmin({ role, title }) {
       setFieldErrors({});
       setOpen(false);
       reload();
+      if (isDoctor) refreshDoctorLists();
     } catch (error) { toast.error(errorMessage(error)); }
   }
 
@@ -82,6 +89,7 @@ export function UserAdmin({ role, title }) {
       toast.success('Account updated');
       setEditing(null);
       reload();
+      if (editing.role === 'DOCTOR') refreshDoctorLists();
     } catch (error) { toast.error(errorMessage(error)); }
   }
 
@@ -127,8 +135,11 @@ export function UserAdmin({ role, title }) {
                   catch (error) { toast.error(errorMessage(error)); }
                 }}>Reset</Button>
                 <Button size="sm" variant={row.isActive ? 'danger' : 'secondary'} onClick={async () => {
-                  try { await api.patch(`/users/${row.id}`, { isActive: !row.isActive }); reload(); }
-                  catch (error) { toast.error(errorMessage(error)); }
+                  try {
+                    await api.patch(`/users/${row.id}`, { isActive: !row.isActive });
+                    reload();
+                    if (row.role === 'DOCTOR') refreshDoctorLists();
+                  } catch (error) { toast.error(errorMessage(error)); }
                 }}>{row.isActive ? 'Deactivate' : 'Activate'}</Button>
               </div>
             ) },
@@ -261,15 +272,58 @@ export function ProcedureAdmin() {
   );
 }
 
+const FIELD_INPUT_TYPES = [
+  { value: 'text', label: 'Text' },
+  { value: 'textarea', label: 'Long text' },
+  { value: 'number', label: 'Number' },
+  { value: 'date', label: 'Date' },
+  { value: 'select', label: 'Dropdown' },
+];
+
 export function MasterDataAdmin() {
+  const queryClient = useQueryClient();
   const { data: typesBody } = useLoad(['master-types'], () => api.get('/master-data/types'));
   const [type, setType] = useState('OCCUPATION');
   const { data, reload, toast } = useLoad(['master-data', type], () => api.get('/master-data', { type }));
   const [label, setLabel] = useState('');
+  const [inputType, setInputType] = useState('text');
+  const [optionsText, setOptionsText] = useState('');
   const types = typesBody?.data || [];
+  const selected = types.find((item) => item.type === type);
+  const isCustom = type === 'SKIN_FIELD';
+
+  async function addItem(event) {
+    event.preventDefault();
+    try {
+      const options = optionsText.split('\n').map((line) => line.trim()).filter(Boolean);
+      await api.post('/master-data', {
+        type,
+        label: label.trim(),
+        allowOther: label.trim().toLowerCase() === 'other',
+        metadata: isCustom
+          ? {
+            inputType,
+            required: false,
+            pendingConfirmation: false,
+            ...(inputType === 'select' ? { options } : {}),
+          }
+          : {},
+      });
+      setLabel('');
+      setOptionsText('');
+      setInputType('text');
+      reload();
+      queryClient.invalidateQueries({ queryKey: ['master-data'] });
+      toast.success(isCustom ? 'Custom field added' : 'Option added');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
       <aside className="card p-3">
+        <p className="mb-2 px-3 text-xs font-bold uppercase tracking-wide text-slate-400">Form fields</p>
         {types.map((item) => (
           <button key={item.type} type="button" onClick={() => setType(item.type)} className={`block w-full rounded-xl px-3 py-2 text-left text-sm ${type === item.type ? 'bg-teal-50 text-teal-900' : 'text-slate-600'}`}>
             {item.label}
@@ -277,23 +331,38 @@ export function MasterDataAdmin() {
         ))}
       </aside>
       <div>
-        <PageHeader title={types.find((item) => item.type === type)?.label || 'Master data'} text={types.find((item) => item.type === type)?.description} />
-        <form className="card mb-4 flex flex-col gap-2 p-4 sm:flex-row" onSubmit={async (event) => {
-          event.preventDefault();
-          try {
-            await api.post('/master-data', { type, label, allowOther: label.toLowerCase() === 'other', metadata: type === 'SKIN_FIELD' ? { inputType: 'text', required: false, pendingConfirmation: true } : {} });
-            setLabel('');
-            reload();
-          } catch (error) { toast.error(errorMessage(error)); }
-        }}>
-          <TextInput placeholder="New option" value={label} onChange={(event) => setLabel(event.target.value)} required />
-          <Button type="submit">Add</Button>
+        <PageHeader title="Form Management" text={selected?.description || 'Manage the dropdown options and custom fields used on the patient form.'} />
+        <form className="card mb-4 grid gap-3 p-4 sm:grid-cols-2" onSubmit={addItem}>
+          <Field label="Name">
+            <TextInput placeholder={isCustom ? 'Field name' : 'Option name'} value={label} onChange={(event) => setLabel(event.target.value)} required />
+          </Field>
+          <Field label="Type">
+            {isCustom ? (
+              <select className="field" value={inputType} onChange={(event) => setInputType(event.target.value)}>
+                {FIELD_INPUT_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            ) : (
+              <TextInput value={selected?.label || type} readOnly />
+            )}
+          </Field>
+          {isCustom && inputType === 'select' && (
+            <div className="sm:col-span-2">
+              <Field label="Dropdown options">
+                <TextArea placeholder={'One option per line\nMild\nModerate\nSevere'} value={optionsText} onChange={(event) => setOptionsText(event.target.value)} />
+              </Field>
+            </div>
+          )}
+          <div className="sm:col-span-2">
+            <Button type="submit">{isCustom ? 'Add custom field' : 'Add option'}</Button>
+          </div>
         </form>
         <div className="card p-4">
           <DataTable rows={(data?.data || []).filter((item) => item.type === type)} rowKey={(row) => row._id} columns={[
-            { key: 'label', header: 'Label' },
-            { key: 'value', header: 'Value' },
-            { key: 'isActive', header: '', render: (row) => <Button size="sm" variant="secondary" onClick={async () => { await api.patch(`/master-data/${row._id}`, { isActive: !row.isActive }); reload(); }}>{row.isActive ? 'Deactivate' : 'Activate'}</Button> },
+            { key: 'label', header: 'Name' },
+            ...(isCustom
+              ? [{ key: 'inputType', header: 'Type', render: (row) => FIELD_INPUT_TYPES.find((item) => item.value === row.metadata?.inputType)?.label || row.metadata?.inputType || 'Text' }]
+              : [{ key: 'value', header: 'Value' }]),
+            { key: 'isActive', header: '', render: (row) => <Button size="sm" variant="secondary" onClick={async () => { await api.patch(`/master-data/${row._id}`, { isActive: !row.isActive }); reload(); queryClient.invalidateQueries({ queryKey: ['master-data'] }); }}>{row.isActive ? 'Deactivate' : 'Activate'}</Button> },
           ]} />
         </div>
       </div>
@@ -302,27 +371,46 @@ export function MasterDataAdmin() {
 }
 
 export function PolicyAdmin() {
-  const { data, reload, toast } = useLoad(['policy-versions'], () => api.get('/policy/versions'));
+  const [departmentCode, setDepartmentCode] = useState('SKIN');
+  const { data, reload, toast } = useLoad(['policy-versions', departmentCode], () => api.get('/policy/versions', { departmentCode }));
   const [items, setItems] = useState('');
+  const label = departmentCode === 'SKIN' ? 'Skin' : 'Surgery';
   return (
     <div className="space-y-4">
-      <PageHeader title="Policy acknowledgement" text="Publishing creates a new version. Earlier versions stay attached to the submissions that acknowledged them." />
+      <PageHeader title="Policy acknowledgement" text="Skin and Surgery each have their own policy. Publishing updates the acknowledgement text for that department. Earlier acknowledgements stay attached to the submissions that already used them." />
+      <div className="flex flex-wrap gap-2">
+        {['SKIN', 'SURGERY'].map((code) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => { setDepartmentCode(code); setItems(''); }}
+            className={`rounded-xl px-4 py-2 text-sm font-bold transition ${departmentCode === code ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+          >
+            {code === 'SKIN' ? 'Skin policy' : 'Surgery policy'}
+          </button>
+        ))}
+      </div>
       <form className="card space-y-3 p-5" onSubmit={async (event) => {
         event.preventDefault();
         try {
-          await api.post('/policy/versions', { items: items.split('\n').map((line) => line.trim()).filter(Boolean) });
-          toast.success('Policy version published');
+          await api.post('/policy/versions', {
+            departmentCode,
+            items: items.split('\n').map((line) => line.trim()).filter(Boolean),
+          });
+          toast.success(`${label} policy published`);
           setItems('');
           reload();
         } catch (error) { toast.error(errorMessage(error)); }
       }}>
-        <Field label="New version, one line per point"><TextArea value={items} onChange={(event) => setItems(event.target.value)} /></Field>
-        <Button type="submit">Publish version</Button>
+        <Field label={`${label} — one line per point`}>
+          <TextArea value={items} onChange={(event) => setItems(event.target.value)} placeholder={'All fees should be paid before the start of the procedure.\nTake the invoice from the counter on the 3rd floor.'} />
+        </Field>
+        <Button type="submit">Publish {label.toLowerCase()} policy</Button>
       </form>
       <div className="space-y-3">
         {(data?.data || []).map((version) => (
           <article key={version._id} className="card p-4">
-            <h3 className="font-bold">Version {version.version}</h3>
+            <h3 className="font-bold">{label} · Published {new Date(version.createdAt).toLocaleString()}</h3>
             <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">{version.items.map((item) => <li key={item}>{item}</li>)}</ul>
           </article>
         ))}
@@ -382,7 +470,7 @@ function changeSummary(row) {
     next.doctorName && `Doctor ${next.doctorName}`,
     next.consultationStatus && `Consultation ${next.consultationStatus}`,
     next.reason,
-    next.version && `Version ${next.version}`,
+    next.version && `Policy update`,
   ].filter(Boolean);
   return parts.join(' · ') || row.entityType || '—';
 }

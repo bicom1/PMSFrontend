@@ -21,8 +21,10 @@ const ProfilePage = lazy(() => import('./pages/shared/ProfilePage.jsx'));
 const UserAdmin = lazy(() => import('./features/admin/AdminScreens.jsx').then((module) => ({ default: module.UserAdmin })));
 const DepartmentAdmin = lazy(() => import('./features/admin/AdminScreens.jsx').then((module) => ({ default: module.DepartmentAdmin })));
 const ProcedureAdmin = lazy(() => import('./features/admin/AdminScreens.jsx').then((module) => ({ default: module.ProcedureAdmin })));
-const MasterDataAdmin = lazy(() => import('./features/admin/AdminScreens.jsx').then((module) => ({ default: module.MasterDataAdmin })));
+const FormManagementHome = lazy(() => import('./features/forms/FormManagementHome.jsx'));
+const FormManagementScreen = lazy(() => import('./features/forms/FormManagementScreen.jsx'));
 const PolicyAdmin = lazy(() => import('./features/admin/AdminScreens.jsx').then((module) => ({ default: module.PolicyAdmin })));
+const FormsNeedAttention = lazy(() => import('./features/submissions/FormsNeedAttention.jsx'));
 const AuditScreen = lazy(() => import('./features/admin/AdminScreens.jsx').then((module) => ({ default: module.AuditScreen })));
 const SettingsScreen = lazy(() => import('./features/admin/AdminScreens.jsx').then((module) => ({ default: module.SettingsScreen })));
 
@@ -47,10 +49,16 @@ export default function App() {
           <Route path="patients/new" element={<NewPatient />} />
           <Route path="patients/new/skin" element={<IntakeForm departmentCode="SKIN" />} />
           <Route path="patients/new/surgery" element={<IntakeForm departmentCode="SURGERY" />} />
+          <Route path="attention" element={<FormsNeedAttention />} />
           <Route path="submissions" element={<SubmissionBrowser title="Submitted forms" endpoint="/submissions" basePath="/manager/submissions" />} />
           <Route path="submissions/:id" element={<RecordPage />} />
           <Route path="patients" element={<PatientBrowser basePath="/manager/patients" />} />
           <Route path="patients/:id" element={<PatientProfilePage submissionBase="/manager/submissions" />} />
+          <Route path="procedures" element={<ProcedureAdmin />} />
+          <Route path="form-management" element={<FormManagementHome />} />
+          <Route path="form-management/skin" element={<FormManagementScreen departmentCode="SKIN" />} />
+          <Route path="form-management/surgery" element={<FormManagementScreen departmentCode="SURGERY" />} />
+          <Route path="policy" element={<PolicyAdmin />} />
           <Route path="reports" element={<ReportScreen />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
@@ -68,6 +76,7 @@ export default function App() {
           <Route path="patients/new/skin" element={<IntakeForm departmentCode="SKIN" />} />
           <Route path="patients/new/surgery" element={<IntakeForm departmentCode="SURGERY" />} />
           <Route path="patients/:id" element={<PatientProfilePage submissionBase="/admin/submissions" />} />
+          <Route path="attention" element={<FormsNeedAttention />} />
           <Route path="submissions" element={<SubmissionBrowser title="All submissions" endpoint="/submissions" basePath="/admin/submissions" />} />
           <Route path="submissions/:id" element={<RecordPage />} />
           <Route path="doctors" element={<UserAdmin key="doctors" role="DOCTOR" title="Doctors" />} />
@@ -75,7 +84,10 @@ export default function App() {
           <Route path="users" element={<UserAdmin title="Users and roles" />} />
           <Route path="departments" element={<DepartmentAdmin />} />
           <Route path="procedures" element={<ProcedureAdmin />} />
-          <Route path="master-data" element={<MasterDataAdmin />} />
+          <Route path="form-management" element={<FormManagementHome base="/admin/form-management" />} />
+          <Route path="form-management/skin" element={<FormManagementScreen departmentCode="SKIN" base="/admin/form-management" />} />
+          <Route path="form-management/surgery" element={<FormManagementScreen departmentCode="SURGERY" base="/admin/form-management" />} />
+          <Route path="master-data" element={<Navigate to="/admin/form-management" replace />} />
           <Route path="policy" element={<PolicyAdmin />} />
           <Route path="reports" element={<ReportScreen allowClinical />} />
           <Route path="audit" element={<AuditScreen />} />

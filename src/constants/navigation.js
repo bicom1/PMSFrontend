@@ -1,13 +1,17 @@
 import {
-  ClipboardList, FileText, History, LayoutDashboard, LogOut, ScrollText, Settings, Stethoscope,
+  AlertTriangle, ClipboardList, FileText, History, LayoutDashboard, LogOut, ScrollText, Settings, Stethoscope,
   UserRound, Users, Building2, ListTree, Database, Shield, BarChart3, UserPlus,
 } from 'lucide-react';
 
 export const managerNav = [
   { to: '/manager', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/manager/patients/new', label: 'New Patient Form', icon: UserPlus },
+  { to: '/manager/attention', label: 'Forms Need Attention', icon: AlertTriangle },
   { to: '/manager/submissions', label: 'Submitted Forms', icon: ClipboardList },
   { to: '/manager/patients', label: 'Patients', icon: Users, end: true },
+  { to: '/manager/procedures', label: 'Procedures', icon: ListTree },
+  { to: '/manager/form-management', label: 'Form Management', icon: Database },
+  { to: '/manager/policy', label: 'Policy Management', icon: ScrollText },
   { to: '/manager/reports', label: 'Reports', icon: BarChart3 },
   { to: '/manager/profile', label: 'Profile', icon: UserRound },
   { label: 'Logout', icon: LogOut, action: 'logout' },
@@ -24,6 +28,7 @@ export const doctorNav = [
 export const adminNav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/patients/new', label: 'New Patient Form', icon: UserPlus },
+  { to: '/admin/attention', label: 'Forms Need Attention', icon: AlertTriangle },
   { to: '/admin/patients', label: 'Patients', icon: Users, end: true },
   { to: '/admin/submissions', label: 'All Submissions', icon: ClipboardList },
   { to: '/admin/doctors', label: 'Doctors', icon: Stethoscope },
@@ -31,7 +36,7 @@ export const adminNav = [
   { to: '/admin/users', label: 'Users & Roles', icon: Shield },
   { to: '/admin/departments', label: 'Departments', icon: Building2 },
   { to: '/admin/procedures', label: 'Procedures', icon: ListTree },
-  { to: '/admin/master-data', label: 'Master Data', icon: Database },
+  { to: '/admin/form-management', label: 'Form Management', icon: Database },
   { to: '/admin/policy', label: 'Policy Management', icon: ScrollText },
   { to: '/admin/reports', label: 'Reports & Analytics', icon: BarChart3 },
   { to: '/admin/audit', label: 'Audit Logs', icon: History },

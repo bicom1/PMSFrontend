@@ -1,18 +1,33 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar } from 'recharts';
+import { keepPreviousData } from '@tanstack/react-query';
 import { CalendarCheck, CalendarX, ClipboardList, Clock, Stethoscope, UserCheck, UserPlus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, RecordState, Spinner, StatCard, statusTone } from '../../components/common/ui.jsx';
 import DataTable from '../../components/tables/DataTable.jsx';
 import { useApiQuery, useQueryError } from '../../services/query.js';
+import { errorMessage } from '../../utils/format.js';
 
 export default function DashboardScreen({ role }) {
   const navigate = useNavigate();
   const recordBase = role === 'ADMIN' ? '/admin/submissions' : role === 'DOCTOR' ? '/doctor/patients' : '/manager/submissions';
   const path = role === 'ADMIN' ? '/admin/dashboard' : role === 'DOCTOR' ? '/doctor/dashboard' : '/manager/dashboard';
-  const dashboard = useApiQuery(['dashboard', role], path);
+  const dashboard = useApiQuery(['dashboard', role], path, undefined, {
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+    refetchInterval: role === 'DOCTOR' ? 5_000 : 15_000,
+    refetchOnWindowFocus: true,
+  });
   useQueryError(dashboard.error);
   const data = dashboard.data?.data;
-  if (!data) return <Spinner label="Loading dashboard" />;
+  if (dashboard.isPending && !data) return <Spinner label="Loading dashboard" />;
+  if (!data) {
+    return (
+      <div className="card p-6">
+        <p className="text-lg font-bold text-ink-900">Dashboard unavailable</p>
+        <p className="mt-2 text-base font-bold text-slate-600">{errorMessage(dashboard.error) || 'Could not load dashboard data.'}</p>
+      </div>
+    );
+  }
   const stats = role === 'DOCTOR'
     ? [
       { label: 'My patients', value: data.myPatients, icon: Users },

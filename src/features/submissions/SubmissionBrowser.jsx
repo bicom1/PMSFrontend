@@ -16,7 +16,11 @@ export default function SubmissionBrowser({ title, endpoint, basePath, doctorMod
   const [query, setQuery] = useState({ page: 1, limit: 10, search: '', departmentCode: '', bookingStatus: '', dateFrom: '', dateTo: '', consultationStatus: '' });
   const search = useDebouncedValue(query.search);
   const params = useMemo(() => Object.fromEntries(Object.entries({ ...query, search }).filter(([, value]) => value)), [query, search]);
-  const list = usePagedQuery(['submissions', endpoint, params], endpoint, params);
+  const list = usePagedQuery(['submissions', endpoint, params], endpoint, params, {
+    staleTime: 0,
+    refetchInterval: doctorMode ? 5_000 : 10_000,
+    refetchOnWindowFocus: true,
+  });
   const doctorList = useApiQuery(['directory-doctors'], '/directory/doctors', { limit: '100' }, { enabled: !doctorMode, staleTime: 5 * 60_000 });
   const procedureList = useApiQuery(['procedures', 'active'], '/procedures', { active: 'true' }, { enabled: !doctorMode, staleTime: 5 * 60_000 });
   useQueryError(list.error);
@@ -26,7 +30,7 @@ export default function SubmissionBrowser({ title, endpoint, basePath, doctorMod
 
   return (
     <div>
-      <PageHeader title={title} text={doctorMode ? 'Booked patients assigned to you. A visit appears here after the clinic marks it booked.' : 'Search and filter live submissions.'} />
+      <PageHeader title={title} text={doctorMode ? 'Patients assigned to you appear here as soon as a form is submitted.' : 'Search and filter live submissions.'} />
       <div className="card mb-4 grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-6">
         <TextInput placeholder="Name, phone, or ID" value={query.search} onChange={(event) => setQuery({ ...query, page: 1, search: event.target.value })} />
         <select className="field" value={query.departmentCode} onChange={(event) => setQuery({ ...query, page: 1, departmentCode: event.target.value })}>
@@ -65,12 +69,12 @@ export default function SubmissionBrowser({ title, endpoint, basePath, doctorMod
       </div>
       <div className="card p-4">
         <DataTable
-          loading={list.isPending}
+          loading={list.isPending && !result}
           rows={result?.items || []}
           rowKey={(row) => row.id}
           onRow={(row) => navigate(`${basePath}/${row.id}`)}
           emptyTitle={doctorMode ? 'No patients assigned' : 'No submissions'}
-          emptyText={doctorMode ? 'Booked patients assigned to you show up here.' : 'Adjust the filters or register a patient.'}
+          emptyText={doctorMode ? 'When a clinic manager or admin assigns a patient to you, it shows here.' : 'Adjust the filters or register a patient.'}
           columns={[
             { key: 'unread', header: 'Record', render: (row) => <RecordState unread={row.unread} /> },
             { key: 'patientCode', header: 'Patient ID' },

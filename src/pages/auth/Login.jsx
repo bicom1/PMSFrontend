@@ -33,7 +33,10 @@ export default function Login() {
       dispatch(setSession(body.data));
       navigate(homeFor(body.data.user.role));
     } catch (err) {
-      setError(errorMessage(err));
+      const offline = !err.response && (err.code === 'ERR_NETWORK' || err.message?.includes('Network'));
+      setError(offline
+        ? 'Cannot reach the clinic API. Make sure the server is running on port 5000, then try again.'
+        : errorMessage(err));
     } finally {
       setBusy(false);
     }

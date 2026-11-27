@@ -16,7 +16,10 @@ export default function DoctorAlerts() {
   const isDoctor = role === 'DOCTOR';
   const alerts = useApiQuery(['alerts', role], isDoctor ? '/doctor/notifications' : '/inbox', undefined, {
     enabled: Boolean(role),
-    refetchInterval: 20_000,
+    staleTime: 0,
+    placeholderData: (previous) => previous,
+    refetchInterval: 5_000,
+    refetchOnWindowFocus: true,
   });
   const items = alerts.data?.data?.items || [];
   const unread = alerts.data?.data?.unread || 0;

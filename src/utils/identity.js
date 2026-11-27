@@ -36,9 +36,13 @@ export function phoneError(value) {
 
 export function cnicError(value) {
   const compact = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (!compact) return 'Identity number is required';
-  if (compact.length < 6 || compact.length > 20) return 'Enter a CNIC or passport number, 6 to 20 characters';
-  if (/^(\d)\1{12}$/.test(compact)) return 'Enter the identity number printed on the document';
+  if (!compact) return 'CNIC or passport is required';
+  if (/^\d+$/.test(compact)) {
+    if (compact.length !== 13) return 'Enter the full 13-digit CNIC';
+    if (/^(\d)\1{12}$/.test(compact)) return 'Enter the CNIC printed on the document';
+    return '';
+  }
+  if (compact.length < 6 || compact.length > 20) return 'Enter a passport number with 6 to 20 characters';
   return '';
 }
 

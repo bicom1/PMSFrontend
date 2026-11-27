@@ -5,8 +5,9 @@ import { api, openProtectedFile, openProtectedPdf } from '../../services/api.js'
 import { clinicToday, errorMessage, formatWhen } from '../../utils/format.js';
 import { Badge, Button, Field, PageHeader, Spinner, TextArea, TextInput, statusTone, useToast } from '../../components/common/ui.jsx';
 import DocumentPanel from '../documents/DocumentPanel.jsx';
+import VoiceDocumentation from '../voice/VoiceDocumentation.jsx';
 
-const tabs = ['Overview', 'Patient profile', 'Medical history', 'Documents', 'Prescriptions', 'Clinical remarks'];
+const tabs = ['Overview', 'Patient profile', 'Medical history', 'Documents', 'Prescriptions', 'Clinical remarks', 'Voice'];
 
 function prettyStatus(status) {
   return String(status || '—').replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -73,7 +74,7 @@ export default function SubmissionRecord({ id }) {
   if (!record) return <Spinner label="Opening record" />;
   const { submission, patient, capabilities } = record;
   const visibleTabs = tabs.filter((item) => {
-    if (item === 'Prescriptions' || item === 'Clinical remarks') return capabilities.canViewClinical;
+    if (item === 'Prescriptions' || item === 'Clinical remarks' || item === 'Voice') return capabilities.canViewClinical;
     return true;
   });
 
@@ -233,7 +234,7 @@ export default function SubmissionRecord({ id }) {
 
       {tab === 'Patient profile' && (
         <section className="card grid gap-3 p-5 text-sm md:grid-cols-2">
-          {[['Patient ID', patient.patientCode], ['Name', patient.fullName], ['Phone', patient.contactNumber], ['CNIC', patient.cnic], ['Date of birth', patient.dateOfBirth], ['Age', patient.age], ['Gender', patient.gender], ['Nationality', patient.nationality], ['Occupation', patient.occupationOther || patient.occupation], ['City', patient.city], ['Address', patient.address], ['Weight', `${submission.weightKg} kg`], ['Height', `${submission.heightCm} cm`], ['Referred by', submission.referredByOther || submission.referredByLabel]].map(([label, value]) => (
+          {[['Patient ID', patient.patientCode], ['Name', patient.fullName], ['Phone', patient.contactNumber], ['CNIC', patient.cnic], ['Date of birth', patient.dateOfBirth], ['Age', patient.age], ['Gender', patient.gender], ['Nationality', patient.nationality], ['Occupation', patient.occupationOther || patient.occupation], ['City', patient.city], ['Address', patient.address], ['Weight', `${submission.weightKg} kg`], ['Height', `${submission.heightCm} in`], ['Referred by', submission.referredByOther || submission.referredByLabel]].map(([label, value]) => (
             <div key={label}><p className="text-slate-400">{label}</p><p className="font-bold text-slate-800">{value || '—'}</p></div>
           ))}
           {record.surgeryDetails && <div className="md:col-span-2 grid gap-3 md:grid-cols-2 rounded-xl bg-slate-50 p-4">
@@ -243,7 +244,7 @@ export default function SubmissionRecord({ id }) {
           {record.skinDetails && <div className="md:col-span-2 rounded-xl bg-amber-50 p-4 text-amber-900">Skin-specific fields are pending clinic confirmation. {record.skinDetails.fields?.length ? '' : 'No additional skin fields have been configured.'}
             <div className="mt-3 grid gap-2 md:grid-cols-2">{record.skinDetails.fields?.map((field) => <div key={field.key}><p className="text-slate-500">{field.label}</p><p>{field.value || '—'}</p></div>)}</div>
           </div>}
-          <div className="md:col-span-2 text-xs text-slate-500">Policy version {submission.policyAcknowledgement?.versionNumber} acknowledged {formatWhen(submission.policyAcknowledgement?.acknowledgedAt)}.</div>
+          <div className="md:col-span-2 text-xs text-slate-500">Policy acknowledged {formatWhen(submission.policyAcknowledgement?.acknowledgedAt)}.</div>
         </section>
       )}
 
@@ -278,7 +279,7 @@ export default function SubmissionRecord({ id }) {
                       </div>
                       {open && (
                         <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-                          {[['Weight', item.weightKg ? `${item.weightKg} kg` : ''], ['Height', item.heightCm ? `${item.heightCm} cm` : ''], ['Age at visit', item.ageAtSubmission], ['Referred by', item.referredByOther || item.referredByLabel], ['Booked', formatWhen(item.bookedAt)], ['Operational remark', item.operationalRemark]].map(([label, value]) => (
+                          {[['Weight', item.weightKg ? `${item.weightKg} kg` : ''], ['Height', item.heightCm ? `${item.heightCm} in` : ''], ['Age at visit', item.ageAtSubmission], ['Referred by', item.referredByOther || item.referredByLabel], ['Booked', formatWhen(item.bookedAt)], ['Operational remark', item.operationalRemark]].map(([label, value]) => (
                             <div key={label} className="rounded-xl bg-slate-50 px-3 py-2">
                               <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
                               <p className="mt-1 font-bold text-ink-900">{value || '—'}</p>
@@ -296,7 +297,7 @@ export default function SubmissionRecord({ id }) {
                               <p className="mt-1 font-bold text-ink-900">{field.value || '—'}</p>
                             </div>
                           ))}
-                          {item.prescriptions?.map((rx) => <p key={rx.id} className="md:col-span-2 text-slate-600">Prescription v{rx.currentVersion}: {rx.versions?.[0]?.medicines?.map((med) => med.name).join(', ') || '—'}</p>)}
+                          {item.prescriptions?.map((rx) => <p key={rx.id} className="md:col-span-2 text-slate-600">Prescription: {rx.versions?.[0]?.medicines?.map((med) => med.name).join(', ') || '—'}</p>)}
                           {item.remarks?.map((note) => <p key={note.id} className="md:col-span-2 text-slate-600">Remark: {note.versions?.[0]?.notes}</p>)}
                         </div>
                       )}
@@ -322,7 +323,7 @@ export default function SubmissionRecord({ id }) {
         <section className="space-y-4">
           {capabilities.canEditClinical && (
             <form className="card space-y-3 p-5" onSubmit={savePrescription}>
-              <h2 className="font-bold">{editingRx ? 'New prescription version' : 'New prescription'}</h2>
+              <h2 className="font-bold">{editingRx ? 'Update prescription' : 'New prescription'}</h2>
               <Field label="Prescription date"><TextInput type="date" value={rxDate} onChange={(event) => setRxDate(event.target.value)} required /></Field>
               {medicines.map((medicine, index) => (
                 <div key={index} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
@@ -332,24 +333,30 @@ export default function SubmissionRecord({ id }) {
                 </div>
               ))}
               <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => setMedicines((current) => [...current, { name: '', dose: '', frequency: '', duration: '', instructions: '' }])}>Add medicine</Button>
+                <Button variant="secondary" type="button" onClick={() => setMedicines((current) => [...current, { name: '', dose: '', frequency: '', duration: '', instructions: '' }])}>Add medicine</Button>
                 <Button type="submit">Save</Button>
               </div>
             </form>
           )}
+          {!capabilities.canEditClinical && !record.prescriptions.length && (
+            <p className="card p-5 text-base font-bold text-slate-600">No prescriptions yet. The assigned doctor can add them here.</p>
+          )}
+          {capabilities.canEditClinical && !record.prescriptions.length && (
+            <p className="text-sm font-bold text-slate-500">No prescriptions saved for this visit yet.</p>
+          )}
           {record.prescriptions.map((rx) => (
             <article key={rx.id} className="card p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="font-bold">{rx.doctorName} · current v{rx.currentVersion}</h3>
+                <h3 className="font-bold">{rx.doctorName}</h3>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" onClick={() => openProtectedPdf(`/prescriptions/${rx.id}/pdf`)}><FileText size={16} /> PDF</Button>
                   <Button size="sm" variant="secondary" onClick={() => window.print()}><Printer size={16} /> Print</Button>
-                  {rx.canEdit && <Button size="sm" onClick={() => { setEditingRx(rx.id); setTab('Prescriptions'); const current = rx.versions[0]; setMedicines(current.medicines); setRxDate(current.prescriptionDate); }}>Edit as new version</Button>}
+                  {rx.canEdit && <Button size="sm" onClick={() => { setEditingRx(rx.id); setTab('Prescriptions'); const current = rx.versions[0]; setMedicines(current.medicines); setRxDate(current.prescriptionDate); }}>Update prescription</Button>}
                 </div>
               </div>
               {rx.versions.map((version) => (
                 <div key={version.id} className={`print-sheet mt-3 rounded-xl p-3 text-sm ${version.versionNumber === rx.currentVersion ? 'bg-teal-50' : 'bg-slate-50'}`}>
-                  <p className="font-bold">Version {version.versionNumber} · {version.prescriptionDate} · {version.editedByName}</p>
+                  <p className="font-bold">{version.prescriptionDate} · {version.editedByName}{version.versionNumber === rx.currentVersion ? ' · Current' : ''}</p>
                   <ul className="mt-1 list-disc pl-5">{version.medicines.map((medicine, index) => <li key={index}>{medicine.name} — {medicine.dose}, {medicine.frequency}, {medicine.duration}. {medicine.instructions}</li>)}</ul>
                 </div>
               ))}
@@ -362,7 +369,7 @@ export default function SubmissionRecord({ id }) {
         <section className="space-y-4">
           {capabilities.canEditClinical && (
             <form className="card space-y-3 p-5" onSubmit={saveClinical}>
-              <h2 className="font-bold">{editingRemark ? 'New remark version' : 'New clinical remark'}</h2>
+              <h2 className="font-bold">{editingRemark ? 'Update clinical remark' : 'New clinical remark'}</h2>
               <div className="flex flex-wrap gap-3 text-sm">
                 {categories.map((category) => (
                   <label key={category.value} className="flex items-center gap-2">
@@ -375,22 +382,36 @@ export default function SubmissionRecord({ id }) {
               <Button type="submit">Save remark</Button>
             </form>
           )}
+          {!capabilities.canEditClinical && !record.remarks.length && (
+            <p className="card p-5 text-base font-bold text-slate-600">No clinical remarks yet. The assigned doctor can add them here.</p>
+          )}
+          {capabilities.canEditClinical && !record.remarks.length && (
+            <p className="text-sm font-bold text-slate-500">No clinical remarks saved for this visit yet.</p>
+          )}
           {record.remarks.map((remarkItem) => (
             <article key={remarkItem.id} className="card p-5 text-sm">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold">{remarkItem.doctorName}</h3>
-                {remarkItem.canEdit && <Button size="sm" onClick={() => { setEditingRemark(remarkItem.id); setNotes(remarkItem.versions[0].notes); setSelectedCategories(remarkItem.versions[0].categories); }}>Update as new version</Button>}
+                {remarkItem.canEdit && <Button size="sm" onClick={() => { setEditingRemark(remarkItem.id); setNotes(remarkItem.versions[0].notes); setSelectedCategories(remarkItem.versions[0].categories); }}>Update note</Button>}
               </div>
               {remarkItem.versions.map((version) => (
                 <div key={version.id} className="mt-3 rounded-xl bg-slate-50 p-3">
-                  <p className="font-bold">Version {version.versionNumber} · {version.categoryLabels?.join(', ')} · {formatWhen(version.createdAt)}</p>
+                  <p className="font-bold">{version.categoryLabels?.join(', ')} · {formatWhen(version.createdAt)}{version.versionNumber === remarkItem.currentVersion ? ' · Current' : ' · Earlier note'}</p>
                   <p className="mt-1">{version.notes}</p>
-                  {version.versionNumber !== remarkItem.currentVersion && <p className="text-xs text-slate-400">Preserved historical version</p>}
                 </div>
               ))}
             </article>
           ))}
         </section>
+      )}
+
+      {tab === 'Voice' && (
+        <VoiceDocumentation
+          submissionId={id}
+          canEdit={capabilities.canEditClinical}
+          recordings={record.voiceRecordings || []}
+          onChanged={load}
+        />
       )}
     </div>
   );
